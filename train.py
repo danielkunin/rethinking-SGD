@@ -21,17 +21,16 @@ def mkdir(dir, overwrite=False):
 
 # Computes Hessian vector product
 def Hvp(loss, v, model, device, data_loader):
-    L = 0
+    Hv = torch.zeros_like(v)
     for batch_idx, (data, target) in enumerate(data_loader):
         data, target = data.to(device), target.to(device)
         output = model(data)
-        L += loss(output, target, reduction='sum')
-    L /= len(data_loader.dataset)
-    grad = torch.autograd.grad(L, model.parameters(), create_graph=True)
-    grad_vec = torch.cat([g.reshape(-1) for g in grad if g is not None])
-    prod = torch.dot(grad_vec, v)
-    grad = torch.autograd.grad(prod, model.parameters())
-    Hv = torch.cat([g.reshape(-1) for g in grad if g is not None])
+        L = loss(output, target, reduction='sum') / len(data_loader.dataset)
+        grad = torch.autograd.grad(L, model.parameters(), create_graph=True)
+        grad_vec = torch.cat([g.reshape(-1) for g in grad if g is not None])
+        prod = torch.dot(grad_vec, v)
+        grad = torch.autograd.grad(prod, model.parameters())
+        Hv += torch.cat([g.reshape(-1) for g in grad if g is not None])
     return Hv
 
 # Computes top eigensubspace of Hessian via power series
@@ -152,7 +151,7 @@ def train(args, loss, model, device, train_loader, optimizer, epoch, step):
     return step
 
 # Test loop   
-def test(args, loss, pred, model, device, test_loader):
+def test(args, loss, model, device, test_loader):
     model.eval()
     test_L = 0
     correct = 0
@@ -161,7 +160,7 @@ def test(args, loss, pred, model, device, test_loader):
             data, target = data.to(device), target.to(device)
             output = model(data)
             test_L += loss(output, target, reduction='sum').item()
-            estimate = pred(output)
+            estimate = output.argmax(dim=1, keepdim=True)
             correct += estimate.eq(target.view_as(estimate)).sum().item()
     test_L /= len(test_loader.dataset)
     accuracy = 100. * correct / len(test_loader.dataset)
@@ -187,15 +186,24 @@ def anneal(lr, mom, bs, alpha):
     # _bs = bs
     return _lr, _mom, _bs
 
-# Loss and prediction functions for classification or regression
-def mse_loss(output, target, reduction='mean'):
-    return F.mse_loss(torch.flatten(output), target.float(), reduction=reduction)
-def mse_pred(output):
-    return torch.clamp(torch.round(output),0,9)
-def ce_loss(output, target, reduction='mean'):
-    return F.cross_entropy(output, target, reduction=reduction)
-def ce_pred(output):
-    return output.argmax(dim=1, keepdim=True)
+# Custom MSE loss for classification
+def MSELoss(output, target, reduction='mean'):
+    num_classes = output.size(1)
+    labels = F.one_hot(target, num_classes=num_classes)
+    if reduction is 'mean':
+        return torch.mean((output - labels)**2)
+    elif reduction is 'sum':
+        return torch.sum((output - labels)**2)
+    elif reduction is None:
+        return (output - labels)**2
+    else:
+        raise ValueError(reduction + " is not valid")
+
+# Disctionary of losses
+losses = {
+    "mse": MSELoss,
+    "ce": torch.nn.CrossEntropyLoss()
+}
 
 def main():
     parser = argparse.ArgumentParser(description='Neural Mechanics II')
@@ -216,7 +224,9 @@ def main():
                         help='multiplicative factor for drop (default: 0.1)')
     parser.add_argument('--drops', type=int, nargs='*', default=[],
                         help='List of epochs to apply hyperparameter drops (default: [])')
-    # Model
+    # Loss & Model
+    parser.add_argument('--loss', type=str, default='ce',
+                        help='mean squared error (mse) or cross entropy (ce)')
     parser.add_argument('--model', type=str, default='fc', choices=["fc", "conv"],
                         help='Model type (fc or conv)')
     parser.add_argument('--num-layers', type=int, default=0,
@@ -225,8 +235,6 @@ def main():
                         help='how many hidden neurons per layer in model')
     parser.add_argument('--batchnorm', type=bool, default=False,
                         help='Apply batchnormalization to hidden layers')
-    parser.add_argument('--regression', type=bool, default=False,
-                        help='Use MSE loss rather than NLL loss')
     parser.add_argument('--pretrained', type=bool, default=False,
                         help='Load pretrained model')
     # Metrics
@@ -278,15 +286,12 @@ def main():
     test_loader = dataloader(test_data, args.test_bs, kwargs)
 
     # Get task, model, and optimizer
-    num_classes = 1 if args.regression else 10
-    if args.regression:
-        loss, pred = mse_loss, mse_pred
-    else:
-        loss, pred = ce_loss, ce_pred
+    loss = losses[args.loss]
+    input_shape, num_classes = (1, 28, 28), 10
     if args.model == 'fc':
-        model = fc(args, (1, 28,28), num_classes).to(device)
+        model = fc(args, input_shape, num_classes).to(device)
     if args.model == 'conv':
-        model = conv(args, (1, 28,28), num_classes).to(device)
+        model = conv(args, input_shape, num_classes).to(device)
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.mom, weight_decay=args.reg)
 
     # Train model
@@ -294,7 +299,7 @@ def main():
     accuracy = []
     step = 0
     for epoch in tqdm(range(1, args.epochs + 1)):
-        accuracy.append(test(args, loss, pred, model, device, test_loader))
+        accuracy.append(test(args, loss, model, device, test_loader))
         if epoch in args.drops:
             lr, mom, bs = anneal(lr, mom, bs, args.drop_rate)
             optimizer.update('lr', lr)
@@ -303,18 +308,16 @@ def main():
             if args.verbose:
                 print("Learning rate: {}, Momentum: {}, Batch size: {}".format(lr, mom, bs))
         step = train(args, loss, model, device, train_loader, optimizer, epoch, step)
-    accuracy.append(test(args, loss, pred, model, device, test_loader))
+    accuracy.append(test(args, loss, model, device, test_loader))
 
     # Metrics and Save
     if args.eigenvector:
-        if args.verbose:
-            print("Computing Eigenvector")
+        print("Computing Eigenvector")
         V, Lamb = subspace(loss, model, device, train_loader, args.eigen_dims, args.power_iters)
         np.save("{}/{}/eigenvector.npy".format(args.save_dir, args.expid), V)
         np.save("{}/{}/eigenvalues.npy".format(args.save_dir, args.expid), Lamb)
     if args.hessian:
-        if args.verbose:
-            print("Computing Hessian")
+        print("Computing Hessian")
         H = hessian(loss, model, device, train_loader)
         np.save("{}/{}/hessian.npy".format(args.save_dir, args.expid), H)
     if args.save_model:
