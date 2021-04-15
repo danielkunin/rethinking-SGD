@@ -176,10 +176,14 @@ def dataloader(dataset, bs, kwargs, sampler=None):
 
 # Anneal hyperparameter function
 def anneal(lr, mom, bs, alpha):
-    # Strategy 1
-    _bs = int(bs / alpha)
-    _mom = np.sqrt(1 - alpha * (1 - mom**2))
-    _lr = lr * (1 + mom) / (1 + _mom)
+    # Strategy 0
+    _bs = int(60000)
+    _mom = 1.0
+    _lr = lr
+    # # Strategy 1
+    # _bs = int(bs / alpha)
+    # _mom = np.sqrt(1 - alpha * (1 - mom**2))
+    # _lr = lr * (1 + mom) / (1 + _mom)
     # Strategy 2
     # _lr = lr * alpha
     # _mom = ((1 + mom) - alpha * (1 - mom)) / ((1 + mom) + alpha * (1 - mom))
@@ -199,10 +203,13 @@ def MSELoss(output, target, reduction='mean'):
     else:
         raise ValueError(reduction + " is not valid")
 
+def CELoss(output, target, reduction='mean'):
+    return F.cross_entropy(output, target, reduction=reduction)
+
 # Disctionary of losses
 losses = {
     "mse": MSELoss,
-    "ce": torch.nn.CrossEntropyLoss()
+    "ce": CELoss
 }
 
 def main():
