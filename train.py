@@ -29,7 +29,7 @@ def Hvp(loss, v, model, device, data_loader):
         grad = torch.autograd.grad(L, model.parameters(), create_graph=True)
         grad_vec = torch.cat([g.reshape(-1) for g in grad if g is not None])
         prod = torch.dot(grad_vec, v)
-        grad = torch.autograd.grad(prod, model.parameters())
+        grad = torch.autograd.grad(prod, model.parameters(), retain_graph=True)
         Hv += torch.cat([g.reshape(-1) for g in grad if g is not None])
     return Hv
 
@@ -65,8 +65,10 @@ class SGD(optim.SGD):
         for group in self.param_groups:
             for p in group["params"]:
                 param_state = self.state[p]
-                buf = param_state["momentum_buffer"]
-
+                if "momentum_buffer" in param_state:
+                    buf = param_state["momentum_buffer"]
+                else:
+                    buf = torch.zeros_like(p)
                 position.append(p.data.numpy().flatten())
                 velocity.append(buf.data.numpy().flatten())
         return np.concatenate(position), np.concatenate(velocity)
@@ -133,17 +135,17 @@ def conv(args, input_shape, num_classes, nonlinearity=nn.ReLU()):
 def train(args, loss, model, device, train_loader, optimizer, epoch, step):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        if args.track & (step % args.track_interval == 0):
+            position, velocity = optimizer.track()
+            np.save("{}/{}/position/{}.npy".format(args.save_dir, args.expid, step), position)
+            np.save("{}/{}/velocity/{}.npy".format(args.save_dir, args.expid, step), velocity)
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
         L = loss(output, target)
         L.backward()
         optimizer.step()
-        step += batch_idx
-        if args.track & (batch_idx % args.track_interval == 0):
-            position, velocity = optimizer.track()
-            np.save("{}/{}/position/{}.npy".format(args.save_dir, args.expid, step), position)
-            np.save("{}/{}/velocity/{}.npy".format(args.save_dir, args.expid, step), velocity)
+        step += 1
         if args.verbose & (batch_idx % args.log_interval == 0):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -176,10 +178,10 @@ def dataloader(dataset, bs, kwargs, sampler=None):
 
 # Anneal hyperparameter function
 def anneal(lr, mom, bs, alpha):
-    # Strategy 0
-    _bs = int(60000)
-    _mom = 1.0
-    _lr = lr
+    # # Strategy 0
+    # _bs = int(60000)
+    # _mom = 1.0
+    # _lr = lr
     # # Strategy 1
     # _bs = int(bs / alpha)
     # _mom = np.sqrt(1 - alpha * (1 - mom**2))
@@ -188,6 +190,10 @@ def anneal(lr, mom, bs, alpha):
     # _lr = lr * alpha
     # _mom = ((1 + mom) - alpha * (1 - mom)) / ((1 + mom) + alpha * (1 - mom))
     # _bs = bs
+    # Strategy 3
+    _bs = bs
+    _lr = lr * alpha
+    _mom = 1 - 2*_lr
     return _lr, _mom, _bs
 
 # Custom MSE loss for classification
@@ -195,14 +201,15 @@ def MSELoss(output, target, reduction='mean'):
     num_classes = output.size(1)
     labels = F.one_hot(target, num_classes=num_classes)
     if reduction is 'mean':
-        return torch.mean((output - labels)**2)
+        return torch.mean(torch.sum((output - labels)**2, axis=1)) / 2
     elif reduction is 'sum':
-        return torch.sum((output - labels)**2)
+        return torch.sum((output - labels)**2) / 2
     elif reduction is None:
-        return (output - labels)**2
+        return (output - labels)**2 / 2
     else:
         raise ValueError(reduction + " is not valid")
 
+# Custom CE loss for classification
 def CELoss(output, target, reduction='mean'):
     return F.cross_entropy(output, target, reduction=reduction)
 
@@ -320,12 +327,14 @@ def main():
     # Metrics and Save
     if args.eigenvector:
         print("Computing Eigenvector")
-        V, Lamb = subspace(loss, model, device, train_loader, args.eigen_dims, args.power_iters)
+        data_loader = train_loader#dataloader(train_data, 60000, kwargs)
+        V, Lamb = subspace(loss, model, device, data_loader, args.eigen_dims, args.power_iters)
         np.save("{}/{}/eigenvector.npy".format(args.save_dir, args.expid), V)
         np.save("{}/{}/eigenvalues.npy".format(args.save_dir, args.expid), Lamb)
     if args.hessian:
         print("Computing Hessian")
-        H = hessian(loss, model, device, train_loader)
+        data_loader = train_loader#dataloader(train_data, 60000, kwargs)
+        H = hessian(loss, model, device, data_loader)
         np.save("{}/{}/hessian.npy".format(args.save_dir, args.expid), H)
     if args.save_model:
         np.save("{}/{}/accuracy.npy".format(args.save_dir, args.expid), np.array(accuracy))
