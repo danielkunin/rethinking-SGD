@@ -34,7 +34,7 @@ def hessian_eigenprojection(model, feats_dir, steps, **kwargs):
 
 
     projected_weights_and_grads = {
-        "steps": steps,
+        "steps": np.array(steps),
         "projected_weights": projected_weights,
         "projected_grads": projected_grads,
         "eigenvalues": eigenvalues,
