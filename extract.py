@@ -42,9 +42,16 @@ def main():
                 metrics[m] = np.array([checkpoint[m]])
 
         # Positions
+        input_shape, num_classes = load.dimension(ARGS.dataset)
+        model = load.model(ARGS.model, ARGS.model_class)(input_shape=input_shape, num_classes=num_classes)
+        trainable_params = []
+        for name,param in model.named_parameters():
+            if param.requires_grad:
+                trainable_params.append(name)
         positions = []
         for name, tensor in checkpoint["model_state_dict"].items():
-            positions.append(tensor.cpu().numpy())
+            if name in trainable_params:
+                positions.append(tensor.cpu().numpy())
 
         # Velocities
         velocities = []
@@ -56,7 +63,6 @@ def main():
                 else:
                     buf = torch.zeros_like(p)
                 velocities.append(buf.cpu().numpy())
-
         for p,v in zip(positions, velocities):
             assert p.shape == v.shape
         positions = np.concatenate([p.reshape(-1) for p in positions])
