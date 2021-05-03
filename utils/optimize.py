@@ -77,6 +77,8 @@ def train(
     model.train()
     total_loss = 0
     total_samples = 0
+    correct1 = 0
+    correct5 = 0
     for batch_idx, (data, target) in enumerate(dataloader):
         curr_step = epoch * num_batches + batch_idx
 
@@ -96,6 +98,12 @@ def train(
         else:
             optimizer.step()
         curr_step += 1
+
+        # Train accuracy
+        _, pred = output.topk(5, dim=1)
+        correct = pred.eq(target.view(-1, 1).expand_as(pred))
+        correct1 += correct[:, :1].sum().item()
+        correct5 += correct[:, :5].sum().item()
 
         ###### Logging
         if verbose and (batch_idx % log_interval == 0):
@@ -141,9 +149,13 @@ def train(
                 )
 
     average_loss = 1.0 * total_loss / total_samples
+    accuracy1 = 100.0 * correct1 / total_samples
+    accuracy5 = 100.0 * correct5 / total_samples
     if device.type == "xla":
         average_loss = xm.mesh_reduce("train_average_loss", average_loss, np.mean)
-    return average_loss
+        accuracy1 = xm.mesh_reduce("train_accuracy1", accuracy1, np.mean)
+        accuracy5 = xm.mesh_reduce("train_accuracy5", accuracy5, np.mean)
+    return average_loss, accuracy1, accuracy5
 
 
 def eval(model, loss, dataloader, device, verbose, epoch, **kwargs):
@@ -210,12 +222,12 @@ def train_eval_loop(
         train_loader = pl.MpDeviceLoader(train_loader, device)
         test_loader = pl.MpDeviceLoader(test_loader, device)
 
-    test_loss, accuracy1, accuracy5 = eval(model, loss, test_loader, device, verbose, 0)
+    test_loss, test_accuracy1, test_accuracy5 = eval(model, loss, test_loader, device, verbose, 0)
     metric_dict = {
         "train_loss": 0,
         "test_loss": test_loss,
-        "accuracy1": accuracy1,
-        "accuracy5": accuracy5,
+        "test_accuracy1": test_accuracy1,
+        "test_accuracy5": test_accuracy5,
     }
     if save:
         checkpoint(
@@ -230,7 +242,7 @@ def train_eval_loop(
             tpu=(device.type == "xla"),
         )
     for epoch in tqdm(range(epoch_offset, epoch_offset + epochs)):
-        train_loss = train(
+        train_loss, train_accuracy1, train_accuracy5 = train(
             model,
             loss,
             optimizer,
@@ -245,14 +257,16 @@ def train_eval_loop(
             save_path=save_path,
             **kwargs,
         )
-        test_loss, accuracy1, accuracy5 = eval(
+        test_loss, test_accuracy1, test_accuracy5 = eval(
             model, loss, test_loader, device, verbose, epoch + 1
         )
         metric_dict = {
             "train_loss": train_loss,
+            "train_accuracy1": train_accuracy1,
+            "train_accuracy5": train_accuracy5,
             "test_loss": test_loss,
-            "accuracy1": accuracy1,
-            "accuracy5": accuracy5,
+            "test_accuracy1": test_accuracy1,
+            "test_accuracy5": test_accuracy5,
         }
         curr_step = (epoch + 1) * kwargs.get("num_batches")
         if save:
@@ -273,5 +287,5 @@ def train_eval_loop(
             f"Final performance: "
             f"\tTrain Loss: {train_loss:.4f}"
             f"\tTest Loss: {test_loss:.4f}"
-            f"\tAccuracy: {accuracy1:.2f}%"
+            f"\tTest Accuracy: {test_accuracy1:.2f}%"
         )
