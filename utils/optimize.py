@@ -204,8 +204,8 @@ def eval(model, loss, dataloader, device, verbose, epoch, **kwargs):
     accuracy1 = 100.0 * correct1 / total_samples
     accuracy5 = 100.0 * correct5 / total_samples
     print_fn(
-        f"Epoch {epoch} evaluation: Average loss: {average_loss:.4f}, "
-        f"Top 1 Accuracy: {correct1}/{total_samples} ({accuracy1:.2f}%)"
+        f"Epoch {epoch} evaluation: Average Test Loss: {average_loss:.4f}, "
+        f"Top 1 Test Accuracy: {correct1}/{total_samples} ({accuracy1:.2f}%)"
     )
 
     if device.type == "xla":
@@ -278,6 +278,10 @@ def train_eval_loop(
             lean_ckpt=lean_ckpt,
             test_loader=test_loader,
             **kwargs,
+        )
+        print_fn(
+            f"Epoch {epoch}: Average Train Loss: {train_loss:.4f}, "
+            f"Top 1 Train Accuracy: {train_accuracy1:.2f}%"
         )
         test_loss, test_accuracy1, test_accuracy5 = eval(
             model, loss, test_loader, device, verbose, epoch + 1
