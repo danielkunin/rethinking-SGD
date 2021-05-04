@@ -37,7 +37,7 @@ def performance_from_ckpt(model, feats_dir, steps, **kwargs):
         "test_accuracy5",
         "step",
     ]
-    metrics = {k: [] for m in metric_keys}
+    metrics = {m: [] for m in metric_keys}
     for i in tqdm(range(len(steps))):
         step = steps[i]
         ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
@@ -45,7 +45,7 @@ def performance_from_ckpt(model, feats_dir, steps, **kwargs):
             metrics[m].append(ckpt[m])
 
     metrics = {k:np.array(v) for k,v in metrics.items()}
-    return {"performance", metrics}
+    return {"performance": metrics}
 
 
 metric_fns = {
