@@ -63,6 +63,7 @@ def train(
     save_path,
     log_interval=10,
     lean_ckpt=False,
+    test_loader=None,
     **kwargs,
 ):
     batch_size = kwargs.get("batch_size")  # per core batch size
@@ -137,9 +138,18 @@ def train(
         # TODO: additionally, could integrate tfutils.DBInterface here
         ######## Checkpointing
         if save and save_path is not None and save_freq is not None:
-            if curr_step % save_freq == 0 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
+            # Do this for consecutive steps
+            if curr_step % save_freq <= 1 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
+                test_loss, test_accuracy1, test_accuracy5 = eval(
+                    model, loss, test_loader, device, verbose, epoch
+                )
                 metric_dict = {
                     "train_loss": train_loss.item(),
+                    "train_batch_accuracy1": correct[:, :1].sum().item(),
+                    "train_batch_accuracy5": correct[:, :5].sum().item(),
+                    "test_loss": test_loss,
+                    "test_accuracy1": test_accuracy1,
+                    "test_accuracy5": test_accuracy5,
                 }
                 checkpoint(
                     model,
@@ -263,6 +273,7 @@ def train_eval_loop(
             save_begin_epoch=save_begin_epoch,
             save_path=save_path,
             lean_ckpt=lean_ckpt,
+            test_loader=test_loader,
             **kwargs,
         )
         test_loss, test_accuracy1, test_accuracy5 = eval(
