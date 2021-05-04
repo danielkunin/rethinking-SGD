@@ -91,6 +91,11 @@ def train():
             "wide-resnet110",
             "wide-resnet152",
             "wide-resnet1202",
+            "alexnet",
+            "densenet121",
+            "densenet161",
+            "densenet169",
+            "densenet201",
         ],
         help="model architecture (default: logistic)",
     )

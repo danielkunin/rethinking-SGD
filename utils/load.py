@@ -6,8 +6,12 @@ import torch.nn.functional as F
 from models import mlp
 from models import tinyimagenet_vgg
 from models import tinyimagenet_resnet
+from models import tinyimagenet_alexnet
+from models import tinyimagenet_densenet
 from models import imagenet_vgg
 from models import imagenet_resnet
+from models import imagenet_alexnet
+from models import imagenet_densenet
 from optimizers import custom_sgd
 from utils import custom_datasets
 
@@ -207,6 +211,11 @@ def model(model_architecture, model_class):
         "wide-resnet50-nobn": tinyimagenet_resnet.wide_resnet50_nobn,
         "wide-resnet101-nobn": tinyimagenet_resnet.wide_resnet101_nobn,
         "wide-resnet152-nobn": tinyimagenet_resnet.wide_resnet152_nobn,
+        "alexnet": tinyimagenet_alexnet.alexnet,
+        "densenet121": tinyimagenet_densenet.densenet121,
+        "densenet161": tinyimagenet_densenet.densenet161,
+        "densenet169": tinyimagenet_densenet.densenet169,
+        "densenet201": tinyimagenet_densenet.densenet201,
     }
     imagenet_models = {
         "vgg11": imagenet_vgg.vgg11,
@@ -224,6 +233,11 @@ def model(model_architecture, model_class):
         "resnet152": imagenet_resnet.resnet152,
         "wide-resnet50": imagenet_resnet.wide_resnet50_2,
         "wide-resnet101": imagenet_resnet.wide_resnet101_2,
+        "alexnet": imagenet_alexnet.alexnet,
+        "densenet121": imagenet_densenet.densenet121,
+        "densenet161": imagenet_densenet.densenet161,
+        "densenet169": imagenet_densenet.densenet169,
+        "densenet201": imagenet_densenet.densenet201,
     }
     models = {
         "default": default_models,
