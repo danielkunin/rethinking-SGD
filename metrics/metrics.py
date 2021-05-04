@@ -22,6 +22,12 @@ def performance(model, feats_dir, steps, **kwargs):
 
 def performance_from_ckpt(model, feats_dir, steps, **kwargs):
     ckpt_dir = feats_dir.replace("feats", "ckpt")
+    step_names = glob.glob(
+        f"{ckpt_dir}/*.tar"
+    )
+    steps = sorted(
+        [int(s.split(".tar")[0].split("step")[1]) for s in step_names]
+    )
     metric_keys = [
         "train_loss",
         "train_accuracy1",
