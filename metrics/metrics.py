@@ -20,8 +20,30 @@ def performance(model, feats_dir, steps, **kwargs):
         metrics["steps"] = steps
     return {"performance": metrics}
 
+def performance_from_ckpt(model, feats_dir, steps, **kwargs):
+    ckpt_dir = feats_dir.replace("feats", "ckpt")
+    metric_keys = [
+        "train_loss",
+        "train_accuracy1",
+        "train_accuracy5",
+        "test_loss",
+        "test_accuracy1",
+        "test_accuracy5",
+        "step",
+    ]
+    metrics = {k: [] for m in metric_keys}
+    for i in tqdm(range(len(steps))):
+        step = steps[i]
+        ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
+        for m in metric_keys:
+            metrics[m].append(ckpt[m])
+
+    metrics = {k:np.array(v) for k,v in metrics.items()}
+    return {"performance", metrics}
+
 
 metric_fns = {
     "performance": performance,
+    "performance_from_ckpt": performance_from_ckpt,
     "hessian_eigenprojection": hessian_eigenprojection,
 }
