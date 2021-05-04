@@ -123,6 +123,7 @@ def main(ARGS):
         save_freq=ARGS.save_freq,
         save_begin_epoch=ARGS.save_begin_epoch,
         save_path=save_path,
+        lean_ckpt=ARGS.lean_ckpt,
         **train_kwargs,
     )
 

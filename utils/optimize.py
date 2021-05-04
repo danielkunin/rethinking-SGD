@@ -13,6 +13,7 @@ def checkpoint(
     verbose,
     metric_dict={},
     tpu=False,
+    lean=False,
 ):
     save_lib = torch
     print_fn = print
@@ -26,12 +27,15 @@ def checkpoint(
         print_fn(f"Saving model checkpoint for step {curr_step}")
     save_dict = {
         "epoch": epoch,
-        "step": curr_step,
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "scheduler_state_dict": scheduler.state_dict(),
+        "step": curr_step
     }
     save_dict.update(metric_dict)
+    if not lean:
+        save_dict.update({
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+        })
     filename = f"{save_path}/ckpt/step{curr_step}.tar"
     save_lib.save(
         save_dict, filename,
@@ -58,6 +62,7 @@ def train(
     save_begin_epoch,
     save_path,
     log_interval=10,
+    lean_ckpt=False,
     **kwargs,
 ):
     batch_size = kwargs.get("batch_size")  # per core batch size
@@ -146,6 +151,7 @@ def train(
                     verbose,
                     metric_dict=metric_dict,
                     tpu=(device.type == "xla"),
+                    lean=lean_ckpt,
                 )
 
     average_loss = 1.0 * total_loss / total_samples
@@ -211,6 +217,7 @@ def train_eval_loop(
     save_begin_epoch=0,
     save_path=None,
     epoch_offset=0,
+    lean_ckpt=False,
     **kwargs,
 ):
     print_fn = print
@@ -255,6 +262,7 @@ def train_eval_loop(
             save_freq=save_freq,
             save_begin_epoch=save_begin_epoch,
             save_path=save_path,
+            lean_ckpt=lean_ckpt,
             **kwargs,
         )
         test_loss, test_accuracy1, test_accuracy5 = eval(

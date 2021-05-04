@@ -217,6 +217,12 @@ def train():
         default=0,
         help="Epoch at which to begin saving every save-freq steps",
     )
+    train_args.add_argument(
+        "--lean-ckpt",
+        type=bool,
+        default=False,
+        help="Make checkpoints lean: i.e. only save metric_dict",
+    )
     # Hessian metrics
     train_args.add_argument(
         "--eigenvector",
