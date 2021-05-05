@@ -50,9 +50,40 @@ def performance_from_ckpt(model, feats_dir, steps, **kwargs):
     metrics = {k:np.array(v) for k,v in metrics.items()}
     return {"performance": metrics}
 
+def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
+    ckpt_dir = feats_dir.replace("feats", "ckpt")
+    step_names = glob.glob(
+        f"{ckpt_dir}/*.tar"
+    )
+    steps = sorted(
+        [int(s.split(".tar")[0].split("step")[1]) for s in step_names]
+    )
+    metric_keys = [
+        "vel_norm",
+        "test_loss",
+        "test_accuracy1",
+        "test_accuracy5",
+    ]
+    metrics = {m: [] for m in metric_keys}
+    for i in tqdm(range(len(steps))):
+        step = steps[i]
+        ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
+        if "vel_norm" in ckpt.keys():
+            for m in metric_keys:
+                metrics[m].append(ckpt[m])
+    metrics = {k:np.array(v) for k,v in metrics.items()}
+
+    for k in metric_keys:
+        if k is "vel_norm":
+            metrics[k] = metrics[k][::2]**2
+        else:
+            metrics[k] = (metrics[k][1::2] - metrics[k][::2])**2
+    return {"loss_diff": metrics}
+
 
 metric_fns = {
     "performance": performance,
     "performance_from_ckpt": performance_from_ckpt,
+    "loss_diff_from_ckpt": loss_diff_from_ckpt,
     "hessian_eigenprojection": hessian_eigenprojection,
 }
