@@ -87,6 +87,8 @@ def train(
     correct5 = 0
     for batch_idx, (data, target) in enumerate(dataloader):
         curr_step = epoch * num_batches + batch_idx
+        if curr_step % save_freq <= 1 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
+            pos, vel = optimizer.track()
 
         ###### Batch loading
         if device.type != "xla":
@@ -150,6 +152,7 @@ def train(
                     "test_loss": test_loss,
                     "test_accuracy1": test_accuracy1,
                     "test_accuracy5": test_accuracy5,
+                    "vel_norm": torch.norm(vel),
                 }
                 checkpoint(
                     model,
