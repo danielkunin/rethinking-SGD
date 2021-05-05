@@ -128,8 +128,8 @@ def main(ARGS):
     )
 
     # Final metrics save
-    spectral_metrics = {}
     if ARGS.eigenvector or ARGS.hessian or ARGS.lanczos:
+        spectral_metrics = {}
         eigen_data_loader = load.dataloader(
             dataset=ARGS.dataset,
             batch_size=ARGS.eigen_batch_size,
@@ -139,36 +139,37 @@ def main(ARGS):
             tpu=ARGS.tpu,
             length=ARGS.eigen_data_length,
         )
-    if ARGS.eigenvector:
-        print("Computing Eigenvector")
-        V, Lamb = spectral.subspace(
-            loss,
-            model,
-            device,
-            eigen_data_loader,
-            ARGS.eigen_dims,
-            ARGS.power_iters
-        )
-        spectral_metrics["eigenvector"] = V
-        spectral_metrics["eigenvalues"] = Lamb
+        if ARGS.eigenvector:
+            print("Computing Eigenvector")
+            V, Lamb = spectral.subspace(
+                loss,
+                model,
+                device,
+                eigen_data_loader,
+                ARGS.eigen_dims,
+                ARGS.power_iters
+            )
+            spectral_metrics["eigenvector"] = V
+            spectral_metrics["eigenvalues"] = Lamb
 
-    if ARGS.lanczos:
-        print("Computing Eigenvectors with Lanczos")
-        Lamb, V = spectral.get_hessian_eigenvalues(
-            loss,
-            model,
-            device,
-            eigen_data_loader,
-            ARGS.eigen_dims,
-        )
-        spectral_metrics["eigenvector"] = V.cpu().numpy()
-        spectral_metrics["eigenvalues"] = Lamb.cpu().numpy()
+        if ARGS.lanczos:
+            print("Computing Eigenvectors with Lanczos")
+            Lamb, V = spectral.get_hessian_eigenvalues(
+                loss,
+                model,
+                device,
+                eigen_data_loader,
+                ARGS.eigen_dims,
+            )
+            spectral_metrics["eigenvector"] = V.cpu().numpy()
+            spectral_metrics["eigenvalues"] = Lamb.cpu().numpy()
 
-    if ARGS.hessian:
-        print("Computing Hessian")
-        H = spectral.hessian(loss, model, device, eigen_data_loader)
-        spectral_metrics["hessian"] = H
-    dd.io.save(f"{save_path}/metrics/spectral.h5", spectral_metrics)
+        if ARGS.hessian:
+            print("Computing Hessian")
+            H = spectral.hessian(loss, model, device, eigen_data_loader)
+            spectral_metrics["hessian"] = H
+
+        dd.io.save(f"{save_path}/metrics/spectral.h5", spectral_metrics)
 
 
 if __name__ == "__main__":
