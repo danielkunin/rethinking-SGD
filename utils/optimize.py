@@ -145,6 +145,7 @@ def train(
                 test_loss, test_accuracy1, test_accuracy5 = eval(
                     model, loss, test_loader, device, verbose, epoch
                 )
+                model.train()
                 metric_dict = {
                     "train_loss": train_loss.item(),
                     "train_batch_accuracy1": correct[:, :1].sum().item(),
