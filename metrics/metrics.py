@@ -2,6 +2,8 @@ import os
 from tqdm import tqdm
 import metrics.helper as utils
 import numpy as np
+import glob
+import torch
 
 from metrics.hessian import hessian_eigenprojection
 
@@ -42,7 +44,8 @@ def performance_from_ckpt(model, feats_dir, steps, **kwargs):
         step = steps[i]
         ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
         for m in metric_keys:
-            metrics[m].append(ckpt[m])
+            if m in ckpt.keys():
+                metrics[m].append(ckpt[m])
 
     metrics = {k:np.array(v) for k,v in metrics.items()}
     return {"performance": metrics}
