@@ -137,7 +137,7 @@ def train():
         "--optimizer",
         type=str,
         default="sgd",
-        choices=["custom_sgd", "sgd", "momentum", "adam", "rms", "lamb",],
+        choices=["custom_sgd", "sgd", "momentum", "adam", "rms", "lamb", "neg_momentum"],
         help="optimizer (default: sgd)",
     )
     train_args.add_argument(

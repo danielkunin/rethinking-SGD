@@ -12,7 +12,7 @@ from models import imagenet_vgg
 from models import imagenet_resnet
 from models import imagenet_alexnet
 from models import imagenet_densenet
-from optimizers import custom_sgd
+from optimizers import custom_sgd, neg_momentum_sgd
 from utils import custom_datasets
 
 
@@ -258,6 +258,14 @@ def optimizer(optimizer, momentum=0.0, dampening=0.0, nesterov=False):
             },
         ),
         "sgd": (optim.SGD, {}),
+        "neg_momentum": (
+            neg_momentum_sgd.SGD,
+            {
+                "momentum": momentum,
+                "dampening": dampening,
+                "nesterov": nesterov,
+            },
+        ),
         "momentum": (
             optim.SGD,
             {"momentum": momentum, "dampening": dampening, "nesterov": nesterov},
