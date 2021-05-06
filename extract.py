@@ -34,47 +34,47 @@ def main():
             continue
 
         checkpoint = torch.load(in_filename, map_location=device)
+        if "model_state_dict" in checkpoint.keys() and "optimizer_state_dict" in checkpoint.keys():
+            # Metrics
+            metrics = {}
+            for m in ["train_loss", "test_loss", "accuracy1", "accuracy5"]:
+                if m in checkpoint.keys():
+                    metrics[m] = np.array([checkpoint[m]])
 
-        # Metrics
-        metrics = {}
-        for m in ["train_loss", "test_loss", "accuracy1", "accuracy5"]:
-            if m in checkpoint.keys():
-                metrics[m] = np.array([checkpoint[m]])
+            # Positions
+            input_shape, num_classes = load.dimension(ARGS.dataset)
+            model = load.model(ARGS.model, ARGS.model_class)(input_shape=input_shape, num_classes=num_classes)
+            trainable_params = []
+            for name,param in model.named_parameters():
+                if param.requires_grad:
+                    trainable_params.append(name)
+            positions = []
+            for name, tensor in checkpoint["model_state_dict"].items():
+                if name in trainable_params:
+                    positions.append(tensor.cpu().numpy())
 
-        # Positions
-        input_shape, num_classes = load.dimension(ARGS.dataset)
-        model = load.model(ARGS.model, ARGS.model_class)(input_shape=input_shape, num_classes=num_classes)
-        trainable_params = []
-        for name,param in model.named_parameters():
-            if param.requires_grad:
-                trainable_params.append(name)
-        positions = []
-        for name, tensor in checkpoint["model_state_dict"].items():
-            if name in trainable_params:
-                positions.append(tensor.cpu().numpy())
+            # Velocities
+            velocities = []
+            for group in checkpoint["optimizer_state_dict"]["param_groups"]:
+                for p in group["params"]:
+                    param_state = checkpoint["optimizer_state_dict"]["state"][p]
+                    if "momentum_buffer" in param_state:
+                        buf = param_state["momentum_buffer"]
+                    else:
+                        buf = torch.zeros_like(p)
+                    velocities.append(buf.cpu().numpy())
+            for p,v in zip(positions, velocities):
+                assert p.shape == v.shape
+            positions = np.concatenate([p.reshape(-1) for p in positions])
+            velocities = np.concatenate([v.reshape(-1) for v in velocities])
 
-        # Velocities
-        velocities = []
-        for group in checkpoint["optimizer_state_dict"]["param_groups"]:
-            for p in group["params"]:
-                param_state = checkpoint["optimizer_state_dict"]["state"][p]
-                if "momentum_buffer" in param_state:
-                    buf = param_state["momentum_buffer"]
-                else:
-                    buf = torch.zeros_like(p)
-                velocities.append(buf.cpu().numpy())
-        for p,v in zip(positions, velocities):
-            assert p.shape == v.shape
-        positions = np.concatenate([p.reshape(-1) for p in positions])
-        velocities = np.concatenate([v.reshape(-1) for v in velocities])
-
-        dd.io.save(
-            out_filename, {
-                "metrics": metrics,
-                "position": positions,
-                "velocity": velocities,
-            }
-        )
+            dd.io.save(
+                out_filename, {
+                    "metrics": metrics,
+                    "position": positions,
+                    "velocity": velocities,
+                }
+            )
 
 
 if __name__ == "__main__":
