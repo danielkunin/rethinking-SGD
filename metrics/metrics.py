@@ -6,6 +6,7 @@ import glob
 import torch
 
 from metrics.hessian import hessian_eigenprojection
+from metrics.hessian import fft
 
 def performance(model, feats_dir, steps, **kwargs):
     metrics = {}
@@ -55,4 +56,5 @@ metric_fns = {
     "performance": performance,
     "performance_from_ckpt": performance_from_ckpt,
     "hessian_eigenprojection": hessian_eigenprojection,
+    "fft": fft,
 }
