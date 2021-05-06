@@ -67,8 +67,8 @@ def fft(model, feats_dir, steps, **kwargs):
     fft_vals = {
         "steps": np.array(steps),
         "weight_fft": compute_fft(projected_weights),
-        "grad_fft": compute_fft(projected_grads)
-        "weight_grad_fft" compute_fft(np.concatenate([projected_weights, projected_grads], axis=1)),
+        "grad_fft": compute_fft(projected_grads),
+        "weight_grad_fft": compute_fft(np.concatenate([projected_weights, projected_grads], axis=1)),
     }
 
     return fft_vals
