@@ -20,3 +20,23 @@ class SGD(torch.optim.SGD):
             for p in group["params"]:
                 param_state = self.state[p]
                 param_state["momentum_buffer"].mul_(0.0)
+
+    @torch.no_grad()
+    def velocity(self):
+        velocity = []
+        for group in self.param_groups:
+            for p in group["params"]:
+                param_state = self.state[p]
+                if "momentum_buffer" in param_state:
+                    buf = param_state["momentum_buffer"]
+                else:
+                    buf = torch.zeros_like(p)
+                velocity.append(buf.reshape(-1))
+        return torch.cat(velocity)
+
+    def hyperparameters(self):
+        for group in self.param_groups:
+            lr = group['lr']
+            momentum = group['momentum']
+            break
+        return lr, momentum

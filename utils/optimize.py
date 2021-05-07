@@ -91,12 +91,24 @@ def train(
         if device.type != "xla":
             data, target = data.to(device), target.to(device)
 
-        optimizer.zero_grad()
-        output = model(data)
-        train_loss = loss(output, target)
-        total_loss += train_loss.item() * data.size(0)
-        total_samples += data.size(0)
-        train_loss.backward()
+        nesterov = True
+        if nesterov:
+            optimizer.zero_grad()
+            output = model(data)
+            train_loss = loss(output, target)
+            grad = torch.autograd.grad(train_loss, model.parameters(), create_graph=True)
+            grad = torch.cat([g.reshape(-1) for g in grad if g is not None])
+            v = optimizer.velocity()
+            lr, momentum = optimizer.hyperparameters()
+            prod = lr / 4 * torch.dot(grad, grad.detach() - 4 * momentum * v)
+            prod.backward()
+        else:
+            optimizer.zero_grad()
+            output = model(data)
+            train_loss = loss(output, target)
+            train_loss.backward()
+        optimizer.step()
+
         if device.type == "xla":
             xm.optimizer_step(optimizer)
             tracker.add(batch_size)
@@ -104,7 +116,9 @@ def train(
             optimizer.step()
         curr_step += 1
 
-        # Train accuracy
+        # Train metrics
+        total_loss += train_loss.item() * data.size(0)
+        total_samples += data.size(0)
         _, pred = output.topk(5, dim=1)
         correct = pred.eq(target.view(-1, 1).expand_as(pred))
         correct1 += correct[:, :1].sum().item()
