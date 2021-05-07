@@ -135,6 +135,7 @@ def train(
         #       it might make more sense to checkpoint only on epoch: makes
         #       for a cleaner codebase and can include test metrics
         # TODO: additionally, could integrate tfutils.DBInterface here
+        # TODO: customize the metric dict based on flags
         ######## Checkpointing
         if save and save_path is not None and save_freq is not None:
             # Do this for consecutive steps
@@ -152,6 +153,7 @@ def train(
                     "test_accuracy1": test_accuracy1,
                     "test_accuracy5": test_accuracy5,
                     "vel_norm": torch.norm(vel),
+                    "dist_from_start": torch.norm(pos - kwargs["theta_0"]),
                 }
                 checkpoint(
                     model,
@@ -241,6 +243,15 @@ def train_eval_loop(
         train_loader = pl.MpDeviceLoader(train_loader, device)
         test_loader = pl.MpDeviceLoader(test_loader, device)
 
+    # Get the weights at initialization
+    trainabe_weights = []
+    for name,param in model.named_parameters():
+        if param.requires_grad:
+            trainabe_weights.append(param.detach().clone())
+    theta_0 = torch.cat([p.reshape(-1) for p in trainabe_weights])
+    kwargs["theta_0"] = theta_0
+
+    # Initial eval
     test_loss, test_accuracy1, test_accuracy5 = eval(model, loss, test_loader, device, verbose, 0)
     metric_dict = {
         "train_loss": 0,
