@@ -4,6 +4,7 @@ import metrics.helper as utils
 import numpy as np
 import glob
 import torch
+import deepdish as dd
 
 from metrics.hessian import hessian_eigenprojection
 
@@ -44,7 +45,7 @@ def performance_from_ckpt(model, feats_dir, steps, **kwargs):
         step = steps[i]
         ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
         for m in metric_keys:
-            if m in ckpt.keys():
+            if "model_state_dict" in ckpt.keys() and m in ckpt.keys():
                 metrics[m].append(ckpt[m])
 
     metrics = {k:np.array(v) for k,v in metrics.items()}
@@ -109,11 +110,14 @@ def loss_diff(model, feats_dir, steps, **kwargs):
         ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
         for m in metric_keys:
             metrics[m].append(ckpt[m])
+    metrics = {k:np.array(v) for k,v in metrics.items()}
+    for k in metric_keys:
+        metrics[k] = (metrics[k][1:] - metrics[k][:-1])**2
 
     weights = np.array(weights)
     grads = np.array(grads)
 
-    metrics["weight_diff_norm"] = (weights[1:] - weights[:-1])**2
+    metrics["weight_diff_norm"] = np.linalg.norm((weights[1:] - weights[:-1]), axis=1)**2
 
     return {"loss_diff": metrics}
 
