@@ -107,7 +107,6 @@ def train(
             output = model(data)
             train_loss = loss(output, target)
             train_loss.backward()
-        optimizer.step()
 
         if device.type == "xla":
             xm.optimizer_step(optimizer)
