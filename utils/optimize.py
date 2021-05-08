@@ -63,6 +63,7 @@ def train(
     save_path,
     log_interval=10,
     lean_ckpt=False,
+    modified_nesterov=False,
     **kwargs,
 ):
     batch_size = kwargs.get("batch_size")  # per core batch size
@@ -91,8 +92,7 @@ def train(
         if device.type != "xla":
             data, target = data.to(device), target.to(device)
 
-        nesterov = True
-        if nesterov:
+        if modified_nesterov:
             optimizer.zero_grad()
             output = model(data)
             train_loss = loss(output, target)
@@ -232,6 +232,7 @@ def train_eval_loop(
     save_path=None,
     epoch_offset=0,
     lean_ckpt=False,
+    modified_nesterov=False,
     **kwargs,
 ):
     print_fn = print
@@ -277,6 +278,7 @@ def train_eval_loop(
             save_begin_epoch=save_begin_epoch,
             save_path=save_path,
             lean_ckpt=lean_ckpt,
+            modified_nesterov=modified_nesterov,
             **kwargs,
         )
         print_fn(

@@ -124,6 +124,7 @@ def main(ARGS):
         save_begin_epoch=ARGS.save_begin_epoch,
         save_path=save_path,
         lean_ckpt=ARGS.lean_ckpt,
+        modified_nesterov=ARGS.modified_nesterov,
         **train_kwargs,
     )
 

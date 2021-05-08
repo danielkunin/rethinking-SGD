@@ -141,6 +141,12 @@ def train():
         help="optimizer (default: sgd)",
     )
     train_args.add_argument(
+        "--modified-nesterov",
+        type=bool,
+        default=False,
+        help="Whether to use our modified Nesterov optimizer",
+    )
+    train_args.add_argument(
         "--train-batch-size",
         type=int,
         default=64,
