@@ -82,6 +82,26 @@ def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
     return {"loss_diff": metrics}
 
 
+def dist_from_start_from_ckpt(model, feats_dir, steps, **kwargs):
+    ckpt_dir = feats_dir.replace("feats", "ckpt")
+    step_names = glob.glob(
+        f"{ckpt_dir}/*.tar"
+    )
+    steps = sorted(
+        [int(s.split(".tar")[0].split("step")[1]) for s in step_names]
+    )
+    metric_keys = ["dist_from_start"]
+    metrics = {m: [] for m in metric_keys}
+    for i in tqdm(range(len(steps))):
+        step = steps[i]
+        ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
+        if "dist_from_start" in ckpt.keys():
+            for m in metric_keys:
+                metrics[m].append(ckpt[m])
+    metrics = {k:np.array(v) for k,v in metrics.items()}
+
+    return {"dist_from_start": metrics}
+
 def load_weight_and_grad(step, feats_dir):
     load_path = f"{feats_dir}/step{step}.h5"
     weight = dd.io.load(load_path, f"/position")
@@ -127,5 +147,6 @@ metric_fns = {
     "performance_from_ckpt": performance_from_ckpt,
     "loss_diff": loss_diff,
     "loss_diff_from_ckpt": loss_diff_from_ckpt,
+    "dist_from_start_from_ckpt": dist_from_start_from_ckpt,
     "hessian_eigenprojection": hessian_eigenprojection,
 }
