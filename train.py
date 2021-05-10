@@ -80,7 +80,10 @@ def main(ARGS):
     model = load.model(ARGS.model, ARGS.model_class)(
         input_shape=input_shape, num_classes=num_classes, pretrained=ARGS.pretrained,
         model_dir=ARGS.model_dir,
-    ).to(device)
+    )
+    if len(ARGS.gpu.split(",")) > 1:
+        model = nn.DataParallel(model)
+    model = model.to(device)
 
     if ARGS.restore_path is not None:
         print_fn("Restoring model weights from {}".format(ARGS.restore_path))
