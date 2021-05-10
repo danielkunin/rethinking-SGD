@@ -23,7 +23,8 @@ def default():
         help='Directory to save checkpoints and features (default: "results")',
     )
     parser.add_argument(
-        "--gpu", type=int, default="0", help="number of GPU device to use (default: 0)"
+        "--gpu", type=str, default="0", help="GPU device to use. Must be a single int or "
+        "a comma separated list with no spaces (default: 0)"
     )
     parser.add_argument(
         "--tpu", type=str, default=None, help="Name of the TPU device to use",

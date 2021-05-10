@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 from torchvision import datasets, transforms
@@ -25,14 +26,15 @@ def configure_tpu(tpu_name):
 
 
 def device(gpu, tpu=None):
-    use_cuda = torch.cuda.is_available()
     if tpu:
         import torch_xla.core.xla_model as xm
 
         return xm.xla_device()
     else:
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu
+        print(f"CUDA_VISIBLE_DEVICES set to {os.environ['CUDA_VISIBLE_DEVICES']}")
         use_cuda = torch.cuda.is_available()
-        return torch.device(f"cuda:{gpu}" if use_cuda else "cpu")
+        return torch.device("cuda" if use_cuda else "cpu")
 
 
 def MSELoss(output, target, reduction='mean'):
