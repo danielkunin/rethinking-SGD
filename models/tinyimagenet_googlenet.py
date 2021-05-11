@@ -67,7 +67,7 @@ class GoogLeNet(nn.Module):
     def __init__(
         self,
         num_classes: int = 1000,
-        aux_logits: bool = True,
+        aux_logits: bool = False,
         transform_input: bool = False,
         init_weights: Optional[bool] = None,
         blocks: Optional[List[Callable[..., nn.Module]]] = None
