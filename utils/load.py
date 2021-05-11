@@ -9,10 +9,12 @@ from models import tinyimagenet_vgg
 from models import tinyimagenet_resnet
 from models import tinyimagenet_alexnet
 from models import tinyimagenet_densenet
+from models import tinyimagenet_googlenet
 from models import imagenet_vgg
 from models import imagenet_resnet
 from models import imagenet_alexnet
 from models import imagenet_densenet
+from models import imagenet_googlenet
 from optimizers import custom_sgd, neg_momentum_sgd
 from utils import custom_datasets
 
@@ -218,6 +220,7 @@ def model(model_architecture, model_class):
         "densenet161": tinyimagenet_densenet.densenet161,
         "densenet169": tinyimagenet_densenet.densenet169,
         "densenet201": tinyimagenet_densenet.densenet201,
+        "googlenet": tinyimagenet_googlenet.googlenet,
     }
     imagenet_models = {
         "vgg11": imagenet_vgg.vgg11,
@@ -240,6 +243,8 @@ def model(model_architecture, model_class):
         "densenet161": imagenet_densenet.densenet161,
         "densenet169": imagenet_densenet.densenet169,
         "densenet201": imagenet_densenet.densenet201,
+        "googlenet": imagenet_googlenet.googlenet,
+
     }
     models = {
         "default": default_models,

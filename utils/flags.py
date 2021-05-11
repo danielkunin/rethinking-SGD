@@ -35,23 +35,15 @@ def default():
     return parser
 
 
-def train():
-    parser = default()
-    train_args = parser.add_argument_group("train")
-    train_args.add_argument(
+def model_flags(parser):
+    parser.add_argument(
         "--dataset",
         type=str,
         default="mnist",
         choices=["mnist", "cifar10", "cifar100", "tiny-imagenet", "imagenet"],
         help="dataset (default: mnist)",
     )
-    train_args.add_argument(
-        "--data-dir",
-        type=str,
-        default="data",
-        help="Directory to store the datasets to be downloaded",
-    )
-    train_args.add_argument(
+    parser.add_argument(
         "--model",
         type=str,
         default="logistic",
@@ -97,15 +89,28 @@ def train():
             "densenet161",
             "densenet169",
             "densenet201",
+            "googlenet",
         ],
         help="model architecture (default: logistic)",
     )
-    train_args.add_argument(
+    parser.add_argument(
         "--model-class",
         type=str,
         default="default",
         choices=["default", "tinyimagenet", "imagenet"],
         help="model class (default: default)",
+    )
+    return parser
+
+def train():
+    parser = default()
+    parser = model_flags(parser)
+    train_args = parser.add_argument_group("train")
+    train_args.add_argument(
+        "--data-dir",
+        type=str,
+        default="data",
+        help="Directory to store the datasets to be downloaded",
     )
     train_args.add_argument(
         "--pretrained",
@@ -273,69 +278,7 @@ def train():
 
 def extract():
     parser = default()
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default="mnist",
-        choices=["mnist", "cifar10", "cifar100", "tiny-imagenet", "imagenet"],
-        help="dataset (default: mnist)",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="logistic",
-        choices=[
-            "logistic",
-            "fc",
-            "fc-bn",
-            "conv",
-            "vgg11",
-            "vgg11-bn",
-            "vgg13",
-            "vgg13-bn",
-            "vgg16",
-            "vgg16-bn",
-            "vgg19",
-            "vgg19-bn",
-            "resnet18",
-            "resnet20",
-            "resnet32",
-            "resnet34",
-            "resnet44",
-            "resnet50",
-            "resnet56",
-            "resnet101",
-            "resnet110",
-            "resnet110",
-            "resnet152",
-            "resnet1202",
-            "wide-resnet18",
-            "wide-resnet20",
-            "wide-resnet32",
-            "wide-resnet34",
-            "wide-resnet44",
-            "wide-resnet50",
-            "wide-resnet56",
-            "wide-resnet101",
-            "wide-resnet110",
-            "wide-resnet110",
-            "wide-resnet152",
-            "wide-resnet1202",
-            "alexnet",
-            "densenet121",
-            "densenet161",
-            "densenet169",
-            "densenet201",
-        ],
-        help="model architecture (default: logistic)",
-    )
-    parser.add_argument(
-        "--model-class",
-        type=str,
-        default="default",
-        choices=["default", "tinyimagenet", "imagenet"],
-        help="model class (default: default)",
-    )
+    parser = model_flags(parser)
     return parser
 
 
