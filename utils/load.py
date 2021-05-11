@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 from torchvision import datasets, transforms
@@ -8,11 +9,13 @@ from models import tinyimagenet_vgg
 from models import tinyimagenet_resnet
 from models import tinyimagenet_alexnet
 from models import tinyimagenet_densenet
+from models import tinyimagenet_googlenet
 from models import imagenet_vgg
 from models import imagenet_resnet
 from models import imagenet_alexnet
 from models import imagenet_densenet
-from optimizers import custom_sgd
+from models import imagenet_googlenet
+from optimizers import custom_sgd, neg_momentum_sgd
 from utils import custom_datasets
 
 
@@ -25,14 +28,15 @@ def configure_tpu(tpu_name):
 
 
 def device(gpu, tpu=None):
-    use_cuda = torch.cuda.is_available()
     if tpu:
         import torch_xla.core.xla_model as xm
 
         return xm.xla_device()
     else:
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu
+        print(f"CUDA_VISIBLE_DEVICES set to {os.environ['CUDA_VISIBLE_DEVICES']}")
         use_cuda = torch.cuda.is_available()
-        return torch.device(f"cuda:{gpu}" if use_cuda else "cpu")
+        return torch.device("cuda" if use_cuda else "cpu")
 
 
 def MSELoss(output, target, reduction='mean'):
@@ -216,6 +220,7 @@ def model(model_architecture, model_class):
         "densenet161": tinyimagenet_densenet.densenet161,
         "densenet169": tinyimagenet_densenet.densenet169,
         "densenet201": tinyimagenet_densenet.densenet201,
+        "googlenet": tinyimagenet_googlenet.googlenet,
     }
     imagenet_models = {
         "vgg11": imagenet_vgg.vgg11,
@@ -238,6 +243,8 @@ def model(model_architecture, model_class):
         "densenet161": imagenet_densenet.densenet161,
         "densenet169": imagenet_densenet.densenet169,
         "densenet201": imagenet_densenet.densenet201,
+        "googlenet": imagenet_googlenet.googlenet,
+
     }
     models = {
         "default": default_models,
@@ -258,6 +265,14 @@ def optimizer(optimizer, momentum=0.0, dampening=0.0, nesterov=False):
             },
         ),
         "sgd": (optim.SGD, {}),
+        "neg_momentum": (
+            neg_momentum_sgd.SGD,
+            {
+                "momentum": momentum,
+                "dampening": dampening,
+                "nesterov": nesterov,
+            },
+        ),
         "momentum": (
             optim.SGD,
             {"momentum": momentum, "dampening": dampening, "nesterov": nesterov},

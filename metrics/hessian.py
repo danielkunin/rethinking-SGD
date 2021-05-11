@@ -42,3 +42,33 @@ def hessian_eigenprojection(model, feats_dir, steps, **kwargs):
     }
 
     return projected_weights_and_grads
+
+def compute_fft(time_series):
+    ft = np.fft.rfft(time_series, axis=0)
+    freq = np.fft.rfftfreq(len(time_steps))
+    fft = {
+        "amplitude": np.array([a.real for a in ft]),
+        "frequency": freq,
+    }
+    return fft
+
+def fft(model, feats_dir, steps, **kwargs):
+    eigenvalues, eigenvectors = load_eigenvalues(feats_dir.split("/feats")[0])
+
+    projected_weights = np.zeros((len(steps), eigenvalues.shape[0]))
+    projected_grads = np.zeros((len(steps), eigenvalues.shape[0]))
+
+    for i in tqdm(range(0, len(steps))):
+        step = steps[i]
+        weight, grad = load_weight_and_grad(step, feats_dir)
+        projected_weights[i] = eigenvectors.T @ weight
+        projected_grads[i] = eigenvectors.T @ grad
+
+    fft_vals = {
+        "steps": np.array(steps),
+        "weight_fft": compute_fft(projected_weights),
+        "grad_fft": compute_fft(projected_grads),
+        "weight_grad_fft": compute_fft(np.concatenate([projected_weights, projected_grads], axis=1)),
+    }
+
+    return fft_vals
