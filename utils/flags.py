@@ -152,7 +152,7 @@ def data_flags(parser):
 def train():
     parser = default()
     parser = model_flags(parser)
-    parser= ata_flags(parser)
+    parser= data_flags(parser)
     train_args = parser.add_argument_group("train")
     train_args.add_argument(
         "--loss",
