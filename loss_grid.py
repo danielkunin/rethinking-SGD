@@ -1,3 +1,6 @@
+import os
+import json
+import shutil
 import torch
 import torch.nn as nn
 import deepdish as dd
@@ -100,14 +103,17 @@ def extend_parser(parser):
         default=None,
         help="Path to load eigenvalues and eigenvectors from.",
     )
+    return parser
 
 
-if name == "__main__":
+if __name__ == "__main__":
     parser = flags.extract()
     parser = extend_parser(parser)
     ARGS = parser.parse_args()
 
     if ARGS.tpu:
+        import torch_xla.core.xla_model as xm
+
         print_fn = xm.master_print
     else:
         print_fn = print
@@ -142,7 +148,7 @@ if name == "__main__":
 
                 post_file_to_bucket(filename)
 
-    torch.manual_seed(ARGS.seed)
+    torch.manual_seed(0)
     device = load.device(ARGS.gpu, tpu=ARGS.tpu)
 
     print_fn("Loading {} dataset.".format(ARGS.dataset))
