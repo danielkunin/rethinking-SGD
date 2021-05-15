@@ -106,11 +106,7 @@ def extend_parser(parser):
     return parser
 
 
-if __name__ == "__main__":
-    parser = flags.extract()
-    parser = extend_parser(parser)
-    ARGS = parser.parse_args()
-
+def main(ARGS):
     if ARGS.tpu:
         import torch_xla.core.xla_model as xm
 
@@ -232,3 +228,21 @@ if __name__ == "__main__":
                     from utils.gcloud import post_file_to_bucket
 
                     post_file_to_bucket(filename)
+
+if name == "__main__":
+    parser = flags.extract()
+    parser = extend_parser(parser)
+    ARGS = parser.parse_args()
+
+    if ARGS.tpu:
+        import torch_xla.core.xla_model as xm
+        import torch_xla.distributed.xla_multiprocessing as xmp
+
+        load.configure_tpu(ARGS.tpu)
+
+        def _mp_fn(rank, args):
+            main(args)
+
+        xmp.spawn(_mp_fn, args=(ARGS,), nprocs=None, start_method="fork")
+    else:
+        main(ARGS)
