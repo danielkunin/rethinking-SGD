@@ -94,6 +94,12 @@ def extend_parser(parser):
     parser.add_argument('--v-idx', type=int, default=1,
                     help='Index of the eigenvector along which to shift the '
                          'model in the y coordinate of the gird')
+    parser.add_argument(
+        "--spectral-path",
+        type=str,
+        default=None,
+        help="Path to load eigenvalues and eigenvectors from.",
+    )
 
 
 if name == "__main__":
@@ -188,7 +194,7 @@ if name == "__main__":
 
     # Grid eval
     m = sum(p.numel() for p in model.parameters())
-    eigenvectors = dd.io.load(f"{exp_path}/metrics/spectral.h5", "/eigenvector")
+    eigenvectors = dd.io.load(ARGS.spectral_path, "/eigenvector")
     u = eigenvector[:,u_idx]
     v = eigenvector[:,v_idx]
 
