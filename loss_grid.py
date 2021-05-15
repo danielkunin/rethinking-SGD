@@ -116,6 +116,7 @@ if name == "__main__":
         exp_path = f"{ARGS.save_dir}/{ARGS.experiment}/{ARGS.expid}"
         save_path = f"{exp_path}/grid"
         try:
+            os.makedirs(exp_path)
             os.makedirs(save_path)
         except FileExistsError:
             if not ARGS.overwrite:
@@ -123,10 +124,10 @@ if name == "__main__":
                     "Feature directory exists and no-overwrite specified. Rerun with --overwrite"
                 )
                 quit()
-            shutil.rmtree(save_path)
-            os.makedirs(save_path)
+            shutil.rmtree(exp_path)
+            os.makedirs(exp_path)
 
-    filename = save_path + "/hyperparameters.json"
+    filename = exp_path + "/hyperparameters.json"
     with open(filename, "w") as f:
         json.dump(ARGS.__dict__, f, sort_keys=True, indent=4)
         if ARGS.tpu:
@@ -213,7 +214,7 @@ if name == "__main__":
                 "test_loss": test_loss,
             }
             filename = f"{save_path}/{i}_{j}.h5"
-            dd.io.save(, save_dict)
+            dd.io.save(filename, save_dict)
             if ARGS.tpu:
                 if xm.get_ordinal() == 0 and filename[0:5] == "gs://":
                     from utils.gcloud import post_file_to_bucket
