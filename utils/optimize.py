@@ -1,4 +1,5 @@
 import torch
+import deepdish as dd
 import numpy as np
 from tqdm import tqdm
 
@@ -139,7 +140,7 @@ def train(
         ######## Checkpointing
         if save and save_path is not None and save_freq is not None:
             # Do this for consecutive steps
-            if curr_step % save_freq <= 1 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
+            if curr_step % save_freq <= 0 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
                 pos, vel = optimizer.track()
                 test_loss, test_accuracy1, test_accuracy5 = eval(
                     model, loss, test_loader, device, verbose, epoch
@@ -154,7 +155,12 @@ def train(
                     "test_accuracy5": test_accuracy5,
                     "vel_norm": torch.norm(vel),
                     "dist_from_start": torch.norm(pos - kwargs["theta_0"]),
+                    #"projected_pos": torch.matmul(kwargs["eigenvectors"], pos),
+                    #"projected_vel": torch.matmul(kwargs["eigenvectors"], vel),
                 }
+                if "eigenvectors" in kwargs.keys():
+                    metric_dict["projected_pos"] = torch.matmul(kwargs["eigenvectors"], pos),
+                    metric_dict["projected_vel"] = torch.matmul(kwargs["eigenvectors"], vel),
                 checkpoint(
                     model,
                     optimizer,
@@ -250,6 +256,15 @@ def train_eval_loop(
             trainabe_weights.append(param.detach().clone())
     theta_0 = torch.cat([p.reshape(-1) for p in trainabe_weights])
     kwargs["theta_0"] = theta_0
+    # Also get the eigenvector
+    if "dist_grad_proj" in save_path or "imnet_oscillations" in save_path:
+        print("including eveces in kwargs")
+        evecs = dd.io.load("/home/jvrsgsty/spectral.h5", "/eigenvector")
+        kwargs["eigenvectors"] = torch.tensor(evecs.T, device=device)
+    if "random_initial_imagenet" in save_path:
+        print("including eveces in kwargs")
+        evecs = dd.io.load("/home/jvrsgsty/spectral_random.h5", "/eigenvector")
+        kwargs["eigenvectors"] = torch.tensor(evecs.T, device=device)
 
     # Initial eval
     test_loss, test_accuracy1, test_accuracy5 = eval(model, loss, test_loader, device, verbose, 0)
