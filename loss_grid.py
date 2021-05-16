@@ -1,9 +1,11 @@
 import os
 import json
 import shutil
+import copy
 import torch
 import torch.nn as nn
 import deepdish as dd
+import numpy as np
 from utils import flags
 from utils import load
 
@@ -59,15 +61,16 @@ def shift_and_eval(model, loss, dataloader, device, shift,
             k = p.numel()
             p.add_(shift[n:n+k].reshape(p.shape))
             n += k
-    L, top1, _ = eval(model, loss, dataloader, device, train)
-
+    print_fn("Shifted the model")
+    L, top1, _ = eval(model_copy, loss, dataloader, device, train)
+    del model_copy
     if verbose:
         mode = "Train" if train else "Test"
         print_fn(
             f"{mode} evaluation: Average Loss: {L:.4f}, "
             f"Top 1 {mode} Accuracy: {top1:.2f}%)"
         )
-    return L
+    return L, top1
 
 
 def extend_parser(parser):
@@ -103,6 +106,8 @@ def extend_parser(parser):
         default=None,
         help="Path to load eigenvalues and eigenvectors from.",
     )
+    parser.add_argument('--data-length', type=int, default=50000,
+                    help='Number of examples to subset from the dataset.')
     return parser
 
 
@@ -134,6 +139,7 @@ def main(ARGS):
                 quit()
             shutil.rmtree(exp_path)
             os.makedirs(exp_path)
+            os.makedirs(save_path)
 
     filename = exp_path + "/hyperparameters.json"
     with open(filename, "w") as f:
@@ -197,39 +203,40 @@ def main(ARGS):
     # Grid eval
     m = sum(p.numel() for p in model.parameters())
     eigenvectors = dd.io.load(ARGS.spectral_path, "/eigenvector")
-    u = eigenvector[:,u_idx]
-    v = eigenvector[:,v_idx]
+    u = torch.tensor(eigenvectors[:,ARGS.u_idx], device=device)
+    v = torch.tensor(eigenvectors[:,ARGS.v_idx], device=device)
 
     x_range = np.linspace(ARGS.x_min, ARGS.x_max, ARGS.x_samples)
     y_range = np.linspace(ARGS.y_min, ARGS.y_max, ARGS.y_samples)
 
     for i in range(ARGS.x_begin, ARGS.x_end):
         for j in range(ARGS.y_begin, ARGS.y_end):
-            if ARGS.verbose:
-                print_fn('Sweep {}, {}'.format(i, j))
-            cu = x_range[i]
-            cv = y_range[j]
+            print_fn('Sweep {}, {}'.format(i, j))
+            cu = torch.tensor(x_range[i], device=device)
+            cv = torch.tensor(y_range[j], device=device)
             shift = cu * u + cv * v
 
-            train_loss = shift_and_eval(model, loss, train_loader, device, shift,
-                   train=True, verbose=ARGS.verbose)
-            test_loss = shift_and_eval(model, loss, test_loader, device, shift,
-                   train=False, verbose=ARGS.verbose)
+            train_loss, train_top1 = shift_and_eval(model, loss, train_loader, device, shift,
+                   train=True, verbose=True)
+            test_loss, test_top1 = shift_and_eval(model, loss, test_loader, device, shift,
+                   train=False, verbose=True)
 
             save_dict = {
                 "grid_coordinates": (i,j),
                 "train_loss": train_loss,
                 "test_loss": test_loss,
+                "train_top1": train_top1,
+                "test_top1": test_top1,
             }
             filename = f"{save_path}/{i}_{j}.h5"
-            dd.io.save(filename, save_dict)
             if ARGS.tpu:
                 if xm.get_ordinal() == 0 and filename[0:5] == "gs://":
                     from utils.gcloud import post_file_to_bucket
 
+                    dd.io.save(filename, save_dict)
                     post_file_to_bucket(filename)
 
-if name == "__main__":
+if __name__ == "__main__":
     parser = flags.extract()
     parser = extend_parser(parser)
     ARGS = parser.parse_args()
