@@ -78,7 +78,7 @@ def extend_parser(parser):
                     help='Min x limit in euclidean coordinates')
     parser.add_argument('--x-max', type=float, default=0.1,
                     help='Max y limit in euclidean coordinates')
-    parser.add_argument('--y_min', type=float, default=-0.1,
+    parser.add_argument('--y-min', type=float, default=-0.1,
                     help='Max x limit in euclidean coordinates')
     parser.add_argument('--y-max', type=float, default=0.1,
                     help='Min y limit in euclidean coordinates')
