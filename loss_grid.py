@@ -206,14 +206,14 @@ def main(ARGS):
     u = torch.tensor(eigenvectors[:,ARGS.u_idx], device=device)
     v = torch.tensor(eigenvectors[:,ARGS.v_idx], device=device)
 
-    x_range = np.linspace(ARGS.x_min, ARGS.x_max, ARGS.x_samples)
-    y_range = np.linspace(ARGS.y_min, ARGS.y_max, ARGS.y_samples)
+    x_range = torch.linspace(ARGS.x_min, ARGS.x_max, ARGS.x_samples, device=device)
+    y_range = torch.linspace(ARGS.y_min, ARGS.y_max, ARGS.y_samples, device=device)
 
     for i in range(ARGS.x_begin, ARGS.x_end):
         for j in range(ARGS.y_begin, ARGS.y_end):
             print_fn('Sweep {}, {}'.format(i, j))
-            cu = torch.tensor(x_range[i], device=device)
-            cv = torch.tensor(y_range[j], device=device)
+            cu = x_range[i]
+            cv = y_range[j]
             shift = cu * u + cv * v
 
             train_loss, train_top1 = shift_and_eval(model, loss, train_loader, device, shift,
