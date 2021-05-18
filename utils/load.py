@@ -123,11 +123,12 @@ def dataloader(
     if dataset == "imagenet":
         mean, std = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
         if train:
+            # Torch pretrained models do not use grayscale, jitter, nor change the scale of crops
             transform = transforms.Compose(
                 [
-                    transforms.RandomResizedCrop(224, scale=(0.2, 1.0)),
-                    transforms.RandomGrayscale(p=0.2),
-                    transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
+                    transforms.RandomResizedCrop(224), #, scale=(0.2, 1.0)),
+                    #transforms.RandomGrayscale(p=0.2),
+                    #transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
                     transforms.Normalize(mean, std),
