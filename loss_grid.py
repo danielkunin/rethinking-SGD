@@ -167,8 +167,8 @@ def main(ARGS):
         datadir=ARGS.data_dir,
         tpu=ARGS.tpu,
         length=ARGS.data_length,
-        should_shuffle=False,
-        apply_random_train_transform=False,
+        shuffle=False,
+        data_augment=False,
     )
     test_loader = load.dataloader(
         dataset=ARGS.dataset,

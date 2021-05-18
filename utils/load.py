@@ -85,7 +85,8 @@ def get_transform(size, padding, mean, std, preprocess):
 
 
 def dataloader(
-    dataset, batch_size, train, workers, length=None, datadir="Data", tpu=False
+    dataset, batch_size, train, workers, length=None, datadir="Data", tpu=False, 
+    shuffle=True, data_augment=True,
 ):
     # Dataset
     if dataset == "mnist":
@@ -122,7 +123,7 @@ def dataloader(
         )
     if dataset == "imagenet":
         mean, std = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-        if train:
+        if train and data_augment:
             # Torch pretrained models do not use grayscale, jitter, nor change the scale of crops
             transform = transforms.Compose(
                 [
@@ -148,6 +149,7 @@ def dataloader(
 
     # Dataloader
     shuffle = train is True
+    shuffle = shuffle and shuffle
     if length is not None:
         indices = torch.randperm(len(dataset))[:length]
         dataset = torch.utils.data.Subset(dataset, indices)
