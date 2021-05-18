@@ -205,6 +205,12 @@ def main(ARGS):
     eigenvectors = dd.io.load(ARGS.spectral_path, "/eigenvector")
     u = torch.tensor(eigenvectors[:,ARGS.u_idx], device=device)
     v = torch.tensor(eigenvectors[:,ARGS.v_idx], device=device)
+    position = []
+    for p in model.parameters():
+        position.append(p.flatten())
+    position = torch.cat(position)
+    cu0 = torch.dot(position, u)
+    cv0 = torch.dot(position, v)
 
     x_range = torch.linspace(ARGS.x_min, ARGS.x_max, ARGS.x_samples, device=device)
     y_range = torch.linspace(ARGS.y_min, ARGS.y_max, ARGS.y_samples, device=device)
@@ -214,7 +220,7 @@ def main(ARGS):
             print_fn('Sweep {}, {}'.format(i, j))
             cu = x_range[i]
             cv = y_range[j]
-            shift = cu * u + cv * v
+            shift = (cu-cu0) * u + (cv-cv0) * v
 
             train_loss, train_top1 = shift_and_eval(model, loss, train_loader, device, shift,
                    train=True, verbose=True)
