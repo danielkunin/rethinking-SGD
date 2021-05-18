@@ -133,6 +133,7 @@ def main(ARGS):
     # Final metrics save
     if ARGS.eigenvector or ARGS.hessian or ARGS.lanczos:
         spectral_metrics = {}
+        eigen_save_path = f"{save_path}/metrics"
         eigen_data_loader = load.dataloader(
             dataset=ARGS.dataset,
             batch_size=ARGS.eigen_batch_size,
@@ -150,7 +151,8 @@ def main(ARGS):
                 device,
                 eigen_data_loader,
                 ARGS.eigen_dims,
-                ARGS.power_iters
+                ARGS.power_iters,
+                eigen_save_path,
             )
             spectral_metrics["eigenvector"] = V
             spectral_metrics["eigenvalues"] = Lamb
@@ -172,7 +174,7 @@ def main(ARGS):
             H = spectral.hessian(loss, model, device, eigen_data_loader)
             spectral_metrics["hessian"] = H
 
-        dd.io.save(f"{save_path}/metrics/spectral.h5", spectral_metrics)
+        dd.io.save(f"{eigen_save_path}/spectral.h5", spectral_metrics)
 
 
 if __name__ == "__main__":

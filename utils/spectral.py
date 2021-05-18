@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import deepdish as dd
 from tqdm import tqdm
 from scipy.sparse.linalg import LinearOperator, eigsh
 
@@ -21,7 +22,7 @@ def Hvp(loss, v, model, device, data_loader):
     return Hv
 
 # Computes top eigensubspace of Hessian via power iteration
-def subspace(loss, model, device, data_loader, dim, iters):
+def subspace(loss, model, device, data_loader, dim, iters, save_path):
     model.train()
     m = sum(p.numel() for p in model.parameters())
     Q = torch.randn((m, dim), device=device)
@@ -32,8 +33,13 @@ def subspace(loss, model, device, data_loader, dim, iters):
         Q, R = torch.qr(HV)
         Q = Q.to(device)
         R = R.to(device)
-    return Q.data.cpu().numpy(), torch.diag(R).data.cpu().numpy()
-
+        V = Q.data.cpu().numpy()
+        lamb =  torch.diag(R).data.cpu().numpy()
+        dd.io.save(
+            f"{save_path}/spectral_it{i}.h5", 
+            {"eigenvector": V, "eigenvalues": lamb}
+        )
+    return V, lamb
 # Computes complete Hessian matrix
 def hessian(loss, model, device, data_loader):
     model.train()

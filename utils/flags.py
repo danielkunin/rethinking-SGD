@@ -37,13 +37,6 @@ def default():
 
 def model_flags(parser):
     parser.add_argument(
-        "--dataset",
-        type=str,
-        default="mnist",
-        choices=["mnist", "cifar10", "cifar100", "tiny-imagenet", "imagenet"],
-        help="dataset (default: mnist)",
-    )
-    parser.add_argument(
         "--model",
         type=str,
         default="logistic",
@@ -100,25 +93,13 @@ def model_flags(parser):
         choices=["default", "tinyimagenet", "imagenet"],
         help="model class (default: default)",
     )
-    return parser
-
-def train():
-    parser = default()
-    parser = model_flags(parser)
-    train_args = parser.add_argument_group("train")
-    train_args.add_argument(
-        "--data-dir",
-        type=str,
-        default="data",
-        help="Directory to store the datasets to be downloaded",
-    )
-    train_args.add_argument(
+    parser.add_argument(
         "--pretrained",
         type=bool,
         default=False,
         help="load pretrained weights (default: False)",
     )
-    train_args.add_argument(
+    parser.add_argument(
         "--model-dir",
         type=str,
         default="pretrained_models",
@@ -126,12 +107,53 @@ def train():
              "Save pretrained models to use here. "
              "Downloaded models will be stored here.",
     )
-    train_args.add_argument(
+    parser.add_argument(
         "--restore-path",
         type=str,
         default=None,
         help="Path to a checkpoint to restore a model from.",
     )
+    return parser
+
+def data_flags(parser):
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="data",
+        help="Directory to store the datasets to be downloaded",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="mnist",
+        choices=["mnist", "cifar10", "cifar100", "tiny-imagenet", "imagenet"],
+        help="dataset (default: mnist)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default="4",
+        help="number of data loading workers (default: 4)",
+    )
+    parser.add_argument(
+        "--train-batch-size",
+        type=int,
+        default=64,
+        help="input batch size for training (default: 64), per core in TPU setting",
+    )
+    parser.add_argument(
+        "--test-batch-size",
+        type=int,
+        default=256,
+        help="input batch size for testing (default: 256), per core in TPU setting",
+    )
+    return parser
+
+def train():
+    parser = default()
+    parser = model_flags(parser)
+    parser= data_flags(parser)
+    train_args = parser.add_argument_group("train")
     train_args.add_argument(
         "--loss",
         type=str,
@@ -145,18 +167,6 @@ def train():
         default="sgd",
         choices=["custom_sgd", "sgd", "momentum", "adam", "rms", "lamb", "neg_momentum"],
         help="optimizer (default: sgd)",
-    )
-    train_args.add_argument(
-        "--train-batch-size",
-        type=int,
-        default=64,
-        help="input batch size for training (default: 64), per core in TPU setting",
-    )
-    train_args.add_argument(
-        "--test-batch-size",
-        type=int,
-        default=256,
-        help="input batch size for testing (default: 256), per core in TPU setting",
     )
     train_args.add_argument(
         "--epochs", type=int, default=0, help="number of epochs to train (default: 0)",
@@ -196,12 +206,6 @@ def train():
         help="nesterov momentum (default: False)",
     )
     train_args.add_argument(
-        "--workers",
-        type=int,
-        default="4",
-        help="number of data loading workers (default: 4)",
-    )
-    train_args.add_argument(
         "--seed", type=int, default=1, help="random seed (default: 1)"
     )
     train_args.add_argument(
@@ -211,6 +215,7 @@ def train():
         default=0,
         help="Print statistics during training and testing. Use -vv for higher verbosity.",
     )
+    # Save flags
     train_args.add_argument(
         "--save-freq",
         type=int,
@@ -279,6 +284,7 @@ def train():
 def extract():
     parser = default()
     parser = model_flags(parser)
+    parser = data_flags(parser)
     return parser
 
 
