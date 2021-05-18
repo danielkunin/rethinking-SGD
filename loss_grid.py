@@ -54,15 +54,14 @@ def shift_and_eval(model, loss, train_loader, test_loader, device, shift,
 
         print_fn = xm.master_print
 
-    model_copy = copy.deepcopy(model).to(device)
     with torch.no_grad():
         n = 0
-        for p in model_copy.parameters():
+        for p in model.parameters():
             k = p.numel()
             p.add_(shift[n:n+k].reshape(p.shape))
             n += k
     print_fn("Shifted the model")
-    test_loss, test_acc, _ = eval(model_copy, loss, test_loader, device,
+    test_loss, test_acc, _ = eval(model, loss, test_loader, device,
         train=False)
     if verbose:
         print_fn(
@@ -70,15 +69,13 @@ def shift_and_eval(model, loss, train_loader, test_loader, device, shift,
             f"Top 1 test Accuracy: {test_acc:.2f}%)"
         )
 
-    train_loss, train_acc, _ = eval(model_copy, loss, train_loader, device,
-        train=True)
+    train_loss, train_acc, _ = eval(model, loss, train_loader, device,
+        train=False)
     if verbose:
         print_fn(
             f"Train evaluation: Average Loss: {train_loss:.4f}, "
             f"Top 1 train Accuracy: {train_acc:.2f}%)"
         )
-
-    del model_copy
 
     return train_loss, train_acc, test_loss, test_acc
 
@@ -147,9 +144,6 @@ def main(ARGS):
                     "Feature directory exists and no-overwrite specified. Rerun with --overwrite"
                 )
                 quit()
-            shutil.rmtree(exp_path)
-            os.makedirs(exp_path)
-            os.makedirs(save_path)
 
     filename = exp_path + "/hyperparameters.json"
     with open(filename, "w") as f:
@@ -173,6 +167,8 @@ def main(ARGS):
         datadir=ARGS.data_dir,
         tpu=ARGS.tpu,
         length=ARGS.data_length,
+        should_shuffle=False,
+        apply_random_train_transform=False,
     )
     test_loader = load.dataloader(
         dataset=ARGS.dataset,
@@ -216,12 +212,13 @@ def main(ARGS):
     u = torch.tensor(eigenvectors[:,ARGS.u_idx], device=device)
     v = torch.tensor(eigenvectors[:,ARGS.v_idx], device=device)
     position = []
-    for p in model.parameters():
-        position.append(p.flatten())
-    position = torch.cat(position)
-    cu0 = torch.dot(position, u)
-    cv0 = torch.dot(position, v)
-
+    with torch.no_grad():
+        for p in model.parameters():
+            position.append(p.flatten())
+        position = torch.cat(position)
+        cu0 = torch.dot(position, u)
+        cv0 = torch.dot(position, v)
+    del position 
     x_range = torch.linspace(ARGS.x_min, ARGS.x_max, ARGS.x_samples, device=device)
     y_range = torch.linspace(ARGS.y_min, ARGS.y_max, ARGS.y_samples, device=device)
 
@@ -230,7 +227,8 @@ def main(ARGS):
             print_fn('Sweep {}, {}'.format(i, j))
             cu = x_range[i]
             cv = y_range[j]
-            shift = (cu-cu0) * u + (cv-cv0) * v
+            with torch.no_grad():
+                shift = (cu-cu0) * u + (cv-cv0) * v
 
             train_loss, train_top1, test_loss, test_top1 = shift_and_eval(
                 model, loss, train_loader, test_loader,
@@ -251,6 +249,14 @@ def main(ARGS):
 
                     dd.io.save(filename, save_dict)
                     post_file_to_bucket(filename)
+            
+            model = load.model(ARGS.model, ARGS.model_class)(
+                input_shape=input_shape, num_classes=num_classes, pretrained=ARGS.pretrained,
+                model_dir=ARGS.model_dir,
+            )
+            if len(ARGS.gpu.split(",")) > 1:
+                model = nn.DataParallel(model)
+            model = model.to(device)
 
 if __name__ == "__main__":
     parser = flags.extract()
