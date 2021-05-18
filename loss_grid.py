@@ -46,8 +46,8 @@ def eval(model, loss, dataloader, device, train=True):
         accuracy5 = xm.mesh_reduce("test_accuracy5", accuracy5, np.mean)
     return average_loss, accuracy1, accuracy5
 
-def shift_and_eval(model, loss, dataloader, device, shift,
-                   train=True, verbose=False):
+def shift_and_eval(model, loss, train_loader, test_loader, device, shift,
+                   verbose=False):
     print_fn = print
     if device.type == "xla":
         import torch_xla.core.xla_model as xm
@@ -62,15 +62,25 @@ def shift_and_eval(model, loss, dataloader, device, shift,
             p.add_(shift[n:n+k].reshape(p.shape))
             n += k
     print_fn("Shifted the model")
-    L, top1, _ = eval(model_copy, loss, dataloader, device, train)
-    del model_copy
+    test_loss, test_acc, _ = eval(model_copy, loss, test_loader, device,
+        train=False)
     if verbose:
-        mode = "Train" if train else "Test"
         print_fn(
-            f"{mode} evaluation: Average Loss: {L:.4f}, "
-            f"Top 1 {mode} Accuracy: {top1:.2f}%)"
+            f"Test evaluation: Average Loss: {test_loss:.4f}, "
+            f"Top 1 test Accuracy: {test_acc:.2f}%)"
         )
-    return L, top1
+
+    train_loss, train_acc, _ = eval(model_copy, loss, train_loader, device,
+        train=True)
+    if verbose:
+        print_fn(
+            f"Train evaluation: Average Loss: {train_loss:.4f}, "
+            f"Top 1 train Accuracy: {train_acc:.2f}%)"
+        )
+
+    del model_copy
+
+    return train_loss, train_acc, test_loss, test_acc
 
 
 def extend_parser(parser):
@@ -222,10 +232,10 @@ def main(ARGS):
             cv = y_range[j]
             shift = (cu-cu0) * u + (cv-cv0) * v
 
-            train_loss, train_top1 = shift_and_eval(model, loss, train_loader, device, shift,
-                   train=True, verbose=True)
-            test_loss, test_top1 = shift_and_eval(model, loss, test_loader, device, shift,
-                   train=False, verbose=True)
+            train_loss, train_top1, test_loss, test_top1 = shift_and_eval(
+                model, loss, train_loader, test_loader,
+                device, shift, verbose=True
+            )
 
             save_dict = {
                 "grid_coordinates": (i,j),
