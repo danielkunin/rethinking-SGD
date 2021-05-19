@@ -261,7 +261,7 @@ def train_eval_loop(
     kwargs["theta_0"] = theta_0
 
     # Also get the eigenvectors if a path is specified
-    if ARGS.spectral_path:
+    if kwargs["spectral_path"]:
         print_fn("Including eveces in kwargs")
         evecs = dd.io.load(ARGS.spectral_path, "/eigenvector")
         kwargs["eigenvectors"] = torch.tensor(evecs.T, device=device)

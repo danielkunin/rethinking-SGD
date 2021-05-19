@@ -95,6 +95,7 @@ def main(ARGS):
         "dataset_size": len(train_loader.dataset),
         "num_batches": len(train_loader),
         "eval_mid_epoch": ARGS.lean_eval_mid_epoch,
+        "spectral_path": ARGS.spectral_path,
     }
     if ARGS.tpu:
         train_kwargs.update(
