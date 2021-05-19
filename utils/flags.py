@@ -36,7 +36,8 @@ def default():
 
 
 def model_flags(parser):
-    parser.add_argument(
+    model_args = parser.add_argument_group("model")
+    model_args.add_argument(
         "--model",
         type=str,
         default="logistic",
@@ -86,20 +87,20 @@ def model_flags(parser):
         ],
         help="model architecture (default: logistic)",
     )
-    parser.add_argument(
+    model_args.add_argument(
         "--model-class",
         type=str,
         default="default",
         choices=["default", "tinyimagenet", "imagenet"],
         help="model class (default: default)",
     )
-    parser.add_argument(
+    model_args.add_argument(
         "--pretrained",
         type=bool,
         default=False,
         help="load pretrained weights (default: False)",
     )
-    parser.add_argument(
+    model_args.add_argument(
         "--model-dir",
         type=str,
         default="pretrained_models",
@@ -107,7 +108,7 @@ def model_flags(parser):
              "Save pretrained models to use here. "
              "Downloaded models will be stored here.",
     )
-    parser.add_argument(
+    model_args.add_argument(
         "--restore-path",
         type=str,
         default=None,
@@ -115,44 +116,108 @@ def model_flags(parser):
     )
     return parser
 
+
 def data_flags(parser):
-    parser.add_argument(
+    data_args = parser.add_argument_group("data")
+    data_args.add_argument(
         "--data-dir",
         type=str,
         default="data",
         help="Directory to store the datasets to be downloaded",
     )
-    parser.add_argument(
+    data_args.add_argument(
         "--dataset",
         type=str,
         default="mnist",
         choices=["mnist", "cifar10", "cifar100", "tiny-imagenet", "imagenet"],
         help="dataset (default: mnist)",
     )
-    parser.add_argument(
+    data_args.add_argument(
         "--workers",
         type=int,
         default="4",
         help="number of data loading workers (default: 4)",
     )
-    parser.add_argument(
+    data_args.add_argument(
         "--train-batch-size",
         type=int,
         default=64,
         help="input batch size for training (default: 64), per core in TPU setting",
     )
-    parser.add_argument(
+    data_args.add_argument(
         "--test-batch-size",
         type=int,
         default=256,
         help="input batch size for testing (default: 256), per core in TPU setting",
     )
+    data_args.add_argument(
+        '--data-length',
+        type=int,
+        default=50000,
+        help='Number of examples to subset from the dataset.'
+    )
     return parser
+
+
+def hessian_flags(parser):
+    hessian_args = parser.add_argument_group("hessian")
+    hessian_args.add_argument(
+        "--eigenvector",
+        type=bool,
+        default=False,
+        help="Save Hessian eigenvectors (default: False)",
+    )
+    hessian_args.add_argument(
+        "--lanczos",
+        type=bool,
+        default=False,
+        help="Compute Hessian eigenvectors using Lanczos (default: False)",
+    )
+    hessian_args.add_argument(
+        "--eigen-dims",
+        type=int,
+        default=1,
+        help="Number of top eigenvectors and values to compute",
+    )
+    hessian_args.add_argument(
+        "--eigen-batch-size",
+        type=int,
+        default=256,
+        help="Number of top eigenvectors and values to compute",
+    )
+    hessian_args.add_argument(
+        "--eigen-data-length",
+        type=int,
+        default=None,
+        help="Number of examples to use to compute the Hessian-vector products."
+             "Must be between 1 and the size of the dataset",
+    )
+    hessian_args.add_argument(
+        "--power-iters",
+        type=int,
+        default=5,
+        help="Number of iterations for the eigenvector computation",
+    )
+    hessian_args.add_argument(
+        "--hessian",
+        type=bool,
+        default=False,
+        help="Save full Hessian (default: False)",
+    )
+    hessian_args.add_argument(
+        "--spectral-path",
+        type=str,
+        default=None,
+        help="Path to load eigenvalues and eigenvectors from.",
+    )
+    return parser
+
 
 def train():
     parser = default()
     parser = model_flags(parser)
-    parser= data_flags(parser)
+    parser = data_flags(parser)
+    parser = hessian_flags(parser)
     train_args = parser.add_argument_group("train")
     train_args.add_argument(
         "--loss",
@@ -213,7 +278,8 @@ def train():
         "--verbose",
         action="count",
         default=0,
-        help="Print statistics during training and testing. Use -vv for higher verbosity.",
+        help="Print statistics during training and testing. "
+             "Use -vv for higher verbosity.",
     )
     # Save flags
     train_args.add_argument(
@@ -233,50 +299,6 @@ def train():
         type=bool,
         default=False,
         help="Make checkpoints lean: i.e. only save metric_dict",
-    )
-    # Hessian metrics
-    train_args.add_argument(
-        "--eigenvector",
-        type=bool,
-        default=False,
-        help="Save Hessian eigenvectors (default: False)",
-    )
-    train_args.add_argument(
-        "--lanczos",
-        type=bool,
-        default=False,
-        help="Compute Hessian eigenvectors using Lanczos (default: False)",
-    )
-    train_args.add_argument(
-        "--eigen-dims",
-        type=int,
-        default=1,
-        help="Number of top eigenvectors and values to compute",
-    )
-    train_args.add_argument(
-        "--eigen-batch-size",
-        type=int,
-        default=256,
-        help="Number of top eigenvectors and values to compute",
-    )
-    train_args.add_argument(
-        "--eigen-data-length",
-        type=int,
-        default=None,
-        help="Number of examples to use to compute the Hessian-vector products."
-             "Must be between 1 and the size of the dataset",
-    )
-    train_args.add_argument(
-        "--power-iters",
-        type=int,
-        default=5,
-        help="Number of iterations for the eigenvector computation",
-    )
-    train_args.add_argument(
-        "--hessian",
-        type=bool,
-        default=False,
-        help="Save full Hessian (default: False)",
     )
     return parser
 
@@ -301,6 +323,7 @@ def cache():
         "--metrics",
         type=str_list,
         default=[],
-        help="comma separated list of which metrics to compute and cache. Caches all if not specified (default: [])",
+        help="comma separated list of which metrics to compute and cache. "
+             "Caches all if not specified (default: [])",
     )
     return parser
