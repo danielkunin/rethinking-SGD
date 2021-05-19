@@ -300,6 +300,12 @@ def train():
         default=False,
         help="Make checkpoints lean: i.e. only save metric_dict",
     )
+    train_args.add_argument(
+        "--lean-eval-mid-epoch",
+        type=bool,
+        default=False,
+        help="Include train and test loss in lean ckpts mid epoch",
+    )
     return parser
 
 

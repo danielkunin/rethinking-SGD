@@ -142,25 +142,28 @@ def train(
             # Do this for consecutive steps
             if curr_step % save_freq <= 0 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
                 pos, vel = optimizer.track()
-                test_loss, test_accuracy1, test_accuracy5 = eval(
-                    model, loss, test_loader, device, verbose, epoch
-                )
-                model.train()
                 metric_dict = {
-                    "train_loss": train_loss.item(),
-                    "train_batch_accuracy1": correct[:, :1].sum().item(),
-                    "train_batch_accuracy5": correct[:, :5].sum().item(),
-                    "test_loss": test_loss,
-                    "test_accuracy1": test_accuracy1,
-                    "test_accuracy5": test_accuracy5,
                     "vel_norm": torch.norm(vel),
                     "dist_from_start": torch.norm(pos - kwargs["theta_0"]),
-                    #"projected_pos": torch.matmul(kwargs["eigenvectors"], pos),
-                    #"projected_vel": torch.matmul(kwargs["eigenvectors"], vel),
                 }
                 if "eigenvectors" in kwargs.keys():
                     metric_dict["projected_pos"] = torch.matmul(kwargs["eigenvectors"], pos),
                     metric_dict["projected_vel"] = torch.matmul(kwargs["eigenvectors"], vel),
+                if kwargs["eval_mid_epoch"]:
+                    test_loss, test_accuracy1, test_accuracy5 = eval(
+                        model, loss, test_loader, device, verbose, epoch
+                    )
+                    model.train()
+                    eval_metrics = {
+                        "train_loss": train_loss.item(),
+                        "train_batch_accuracy1": correct[:, :1].sum().item(),
+                        "train_batch_accuracy5": correct[:, :5].sum().item(),
+                        "test_loss": test_loss,
+                        "test_accuracy1": test_accuracy1,
+                        "test_accuracy5": test_accuracy5,
+                    }
+                    metric_dict.update(eval_metrics)
+
                 checkpoint(
                     model,
                     optimizer,
@@ -256,14 +259,11 @@ def train_eval_loop(
             trainabe_weights.append(param.detach().clone())
     theta_0 = torch.cat([p.reshape(-1) for p in trainabe_weights])
     kwargs["theta_0"] = theta_0
-    # Also get the eigenvector
-    if "dist_grad_proj" in save_path or "imnet_oscillations" in save_path:
-        print("including eveces in kwargs")
-        evecs = dd.io.load("/home/jvrsgsty/spectral.h5", "/eigenvector")
-        kwargs["eigenvectors"] = torch.tensor(evecs.T, device=device)
-    if "random_initial_imagenet" in save_path:
-        print("including eveces in kwargs")
-        evecs = dd.io.load("/home/jvrsgsty/spectral_random.h5", "/eigenvector")
+
+    # Also get the eigenvectors if a path is specified
+    if ARGS.spectral_path:
+        print_fn("Including eveces in kwargs")
+        evecs = dd.io.load(ARGS.spectral_path, "/eigenvector")
         kwargs["eigenvectors"] = torch.tensor(evecs.T, device=device)
 
     # Initial eval

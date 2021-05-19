@@ -94,6 +94,7 @@ def main(ARGS):
         "batch_size": train_loader.batch_size,
         "dataset_size": len(train_loader.dataset),
         "num_batches": len(train_loader),
+        "eval_mid_epoch": ARGS.lean_eval_mid_epoch,
     }
     if ARGS.tpu:
         train_kwargs.update(
