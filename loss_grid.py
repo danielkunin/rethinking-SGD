@@ -81,40 +81,33 @@ def shift_and_eval(model, loss, train_loader, test_loader, device, shift,
 
 
 def extend_parser(parser):
-    parser.add_argument('--x-min', type=float, default=-0.1,
+    grid_args = parser.add_argument_group("grid")
+    grid_args.add_argument('--x-min', type=float, default=-0.1,
                     help='Min x limit in euclidean coordinates')
-    parser.add_argument('--x-max', type=float, default=0.1,
+    grid_args.add_argument('--x-max', type=float, default=0.1,
                     help='Max y limit in euclidean coordinates')
-    parser.add_argument('--y-min', type=float, default=-0.1,
+    grid_args.add_argument('--y-min', type=float, default=-0.1,
                     help='Max x limit in euclidean coordinates')
-    parser.add_argument('--y-max', type=float, default=0.1,
+    grid_args.add_argument('--y-max', type=float, default=0.1,
                     help='Min y limit in euclidean coordinates')
-    parser.add_argument('--x-samples', type=int, default=40,
+    grid_args.add_argument('--x-samples', type=int, default=40,
                     help='Number of points to sample along x')
-    parser.add_argument('--y-samples', type=int, default=40,
+    grid_args.add_argument('--y-samples', type=int, default=40,
                     help='Number of points to sample along y')
-    parser.add_argument('--x-begin', type=int, default=0,
+    grid_args.add_argument('--x-begin', type=int, default=0,
                     help='Index of the grid to begin with (inclusive) along x')
-    parser.add_argument('--x-end', type=int, default=40,
+    grid_args.add_argument('--x-end', type=int, default=40,
                     help='Index of the grid to end with (exclusive) along x')
-    parser.add_argument('--y-begin', type=int, default=0,
+    grid_args.add_argument('--y-begin', type=int, default=0,
                     help='Index of the grid to begin with (inclusive) along x')
-    parser.add_argument('--y-end', type=int, default=40,
+    grid_args.add_argument('--y-end', type=int, default=40,
                     help='Index of the grid to end with (exclusive) along x')
-    parser.add_argument('--u-idx', type=int, default=0,
+    grid_args.add_argument('--u-idx', type=int, default=0,
                     help='Index of the eigenvector along which to shift the '
                          'model in the x coordinate of the grid')
-    parser.add_argument('--v-idx', type=int, default=1,
+    grid_args.add_argument('--v-idx', type=int, default=1,
                     help='Index of the eigenvector along which to shift the '
                          'model in the y coordinate of the gird')
-    parser.add_argument(
-        "--spectral-path",
-        type=str,
-        default=None,
-        help="Path to load eigenvalues and eigenvectors from.",
-    )
-    parser.add_argument('--data-length', type=int, default=50000,
-                    help='Number of examples to subset from the dataset.')
     return parser
 
 
@@ -218,7 +211,7 @@ def main(ARGS):
         position = torch.cat(position)
         cu0 = torch.dot(position, u)
         cv0 = torch.dot(position, v)
-    del position 
+    del position
     x_range = torch.linspace(ARGS.x_min, ARGS.x_max, ARGS.x_samples, device=device)
     y_range = torch.linspace(ARGS.y_min, ARGS.y_max, ARGS.y_samples, device=device)
 
@@ -249,7 +242,7 @@ def main(ARGS):
 
                     dd.io.save(filename, save_dict)
                     post_file_to_bucket(filename)
-            
+
             model = load.model(ARGS.model, ARGS.model_class)(
                 input_shape=input_shape, num_classes=num_classes, pretrained=ARGS.pretrained,
                 model_dir=ARGS.model_dir,
@@ -260,6 +253,7 @@ def main(ARGS):
 
 if __name__ == "__main__":
     parser = flags.extract()
+    parser = flags.hessian_flags(parser)
     parser = extend_parser(parser)
     ARGS = parser.parse_args()
 
