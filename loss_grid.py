@@ -161,7 +161,7 @@ def main(ARGS):
         tpu=ARGS.tpu,
         length=ARGS.data_length,
         shuffle=False,
-        data_augment=False,
+        data_augment=True,
     )
     test_loader = load.dataloader(
         dataset=ARGS.dataset,
@@ -244,7 +244,8 @@ def main(ARGS):
 
                     dd.io.save(filename, save_dict)
                     post_file_to_bucket(filename)
-
+            # Reinint model
+            torch.manual_seed(0)
             model = load.model(ARGS.model, ARGS.model_class)(
                 input_shape=input_shape, num_classes=num_classes, pretrained=ARGS.pretrained,
                 model_dir=ARGS.model_dir,
@@ -252,6 +253,19 @@ def main(ARGS):
             if len(ARGS.gpu.split(",")) > 1:
                 model = nn.DataParallel(model)
             model = model.to(device)
+
+            # reinint data loader
+            train_loader = load.dataloader(
+                dataset=ARGS.dataset,
+                batch_size=ARGS.train_batch_size,
+                train=True,
+                workers=ARGS.workers,
+                datadir=ARGS.data_dir,
+                tpu=ARGS.tpu,
+                length=ARGS.data_length,
+                shuffle=False,
+                data_augment=True,
+            )
 
 if __name__ == "__main__":
     parser = flags.extract()
