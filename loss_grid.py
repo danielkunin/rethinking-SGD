@@ -161,7 +161,7 @@ def main(ARGS):
         tpu=ARGS.tpu,
         length=ARGS.data_length,
         shuffle=False,
-        data_augment=False,
+        data_augment=True,
     )
     test_loader = load.dataloader(
         dataset=ARGS.dataset,
@@ -204,14 +204,16 @@ def main(ARGS):
     eigenvectors = dd.io.load(ARGS.spectral_path, "/eigenvector")
     u = torch.tensor(eigenvectors[:,ARGS.u_idx], device=device)
     v = torch.tensor(eigenvectors[:,ARGS.v_idx], device=device)
-    position = []
-    with torch.no_grad():
-        for p in model.parameters():
-            position.append(p.flatten())
-        position = torch.cat(position)
-        cu0 = torch.dot(position, u)
-        cv0 = torch.dot(position, v)
-    del position
+
+    trainabe_weights = []
+    for name,param in model.named_parameters():
+        if param.requires_grad:
+            trainabe_weights.append(param.detach().clone())
+    position = torch.cat([p.reshape(-1) for p in trainabe_weights])
+
+    cu0 = torch.dot(position, u)
+    cv0 = torch.dot(position, v)
+
     x_range = torch.linspace(ARGS.x_min, ARGS.x_max, ARGS.x_samples, device=device)
     y_range = torch.linspace(ARGS.y_min, ARGS.y_max, ARGS.y_samples, device=device)
 
@@ -242,7 +244,8 @@ def main(ARGS):
 
                     dd.io.save(filename, save_dict)
                     post_file_to_bucket(filename)
-
+            # Reinint model
+            torch.manual_seed(0)
             model = load.model(ARGS.model, ARGS.model_class)(
                 input_shape=input_shape, num_classes=num_classes, pretrained=ARGS.pretrained,
                 model_dir=ARGS.model_dir,
@@ -250,6 +253,19 @@ def main(ARGS):
             if len(ARGS.gpu.split(",")) > 1:
                 model = nn.DataParallel(model)
             model = model.to(device)
+
+            # reinint data loader
+            train_loader = load.dataloader(
+                dataset=ARGS.dataset,
+                batch_size=ARGS.train_batch_size,
+                train=True,
+                workers=ARGS.workers,
+                datadir=ARGS.data_dir,
+                tpu=ARGS.tpu,
+                length=ARGS.data_length,
+                shuffle=False,
+                data_augment=True,
+            )
 
 if __name__ == "__main__":
     parser = flags.extract()
