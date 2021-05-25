@@ -36,7 +36,7 @@ def subspace(loss, model, device, data_loader, dim, iters, save_path):
         V = Q.data.cpu().numpy()
         lamb =  torch.diag(R).data.cpu().numpy()
         dd.io.save(
-            f"{save_path}/spectral_it{i}.h5", 
+            f"{save_path}/spectral_it{i}.h5",
             {"eigenvector": V, "eigenvalues": lamb}
         )
     return V, lamb
@@ -77,4 +77,21 @@ def get_hessian_eigenvalues(loss, model, device, data_loader, neigs=6):
     nparams = sum(p.numel() for p in model.parameters())
     evals, evecs = lanczos(hvp_delta, nparams, neigs=neigs)
     return evals, evecs
+
+
+def gradient(loss, model, device, data_loader):
+    model.train()
+    m = sum(p.numel() for p in model.parameters())
+    gradient = torch.zeros(m, device=device)
+    for batch_idx, (data, target) in tqdm(enumerate(data_loader), desc='Dataset', leave=True):
+        data, target = data.to(device), target.to(device)
+        output = model(data)
+        L = loss(output, target) * data.size(0) / len(data_loader.dataset)
+        grad = torch.autograd.grad(L, model.parameters())
+        grad_vec = torch.cat([g.reshape(-1) for g in grad if g is not None])
+        gradient += grad_vec
+    if device.type == "xla":
+        import torch_xla.core.xla_model as xm
+        gradient = xm.mesh_reduce("gradient", gradient, np.sum)
+    return gradient
 

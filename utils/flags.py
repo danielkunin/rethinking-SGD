@@ -205,6 +205,12 @@ def hessian_flags(parser):
         help="Save full Hessian (default: False)",
     )
     hessian_args.add_argument(
+        "--gradient",
+        type=bool,
+        default=False,
+        help="Save the gradient (default: False)",
+    )
+    hessian_args.add_argument(
         "--spectral-path",
         type=str,
         default=None,

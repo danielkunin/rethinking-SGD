@@ -133,7 +133,7 @@ def main(ARGS):
     )
 
     # Final metrics save
-    if ARGS.eigenvector or ARGS.hessian or ARGS.lanczos:
+    if ARGS.eigenvector or ARGS.hessian or ARGS.lanczos or ARGS.gradient:
         spectral_metrics = {}
         eigen_save_path = f"{save_path}/metrics"
         eigen_data_loader = load.dataloader(
@@ -144,6 +144,8 @@ def main(ARGS):
             datadir=ARGS.data_dir,
             tpu=ARGS.tpu,
             length=ARGS.eigen_data_length,
+            shuffle=False,
+            data_augment=True,
         )
         if ARGS.eigenvector:
             print("Computing Eigenvector")
@@ -175,6 +177,11 @@ def main(ARGS):
             print("Computing Hessian")
             H = spectral.hessian(loss, model, device, eigen_data_loader)
             spectral_metrics["hessian"] = H
+
+        if ARGS.gradient:
+            print("Computing Gradient")
+            g = spectral.gradient(loss, model, device, eigen_data_loader)
+            spectral_metrics["gradient"] = g
 
         dd.io.save(f"{eigen_save_path}/spectral.h5", spectral_metrics)
 
