@@ -154,13 +154,14 @@ def train(
                     lean=lean_ckpt,
                 )
 
+    if device.type == "xla":
+        total_loss = xm.mesh_reduce("total_train_loss", total_loss, np.sum)
+        total_samples = xm.mesh_reduce("total_train_samples", total_samples, np.sum)
+        correct1 = xm.mesh_reduce("total_train_correct1", correct1, np.sum)
+        correct5 = xm.mesh_reduce("total_train_correct5", correct5, np.sum)
     average_loss = 1.0 * total_loss / total_samples
     accuracy1 = 100.0 * correct1 / total_samples
     accuracy5 = 100.0 * correct5 / total_samples
-    if device.type == "xla":
-        average_loss = xm.mesh_reduce("train_average_loss", average_loss, np.mean)
-        accuracy1 = xm.mesh_reduce("train_accuracy1", accuracy1, np.mean)
-        accuracy5 = xm.mesh_reduce("train_accuracy5", accuracy5, np.mean)
     return average_loss, accuracy1, accuracy5
 
 
@@ -172,7 +173,7 @@ def eval(model, loss, dataloader, device, verbose, epoch, **kwargs):
         print_fn = xm.master_print
 
     model.eval()
-    total = 0
+    total_loss = 0
     correct1 = 0
     correct5 = 0
     total_samples = 0
@@ -181,24 +182,26 @@ def eval(model, loss, dataloader, device, verbose, epoch, **kwargs):
         for data, target in dataloader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            total += loss(output, target).item() * data.size(0)
+            total_loss += loss(output, target).item() * data.size(0)
             _, pred = output.topk(5, dim=1)
             correct = pred.eq(target.view(-1, 1).expand_as(pred))
             correct1 += correct[:, :1].sum().item()
             correct5 += correct[:, :5].sum().item()
             total_samples += data.size()[0]
-    average_loss = 1.0 * total / total_samples
+
+    if device.type == "xla":
+        total_loss = xm.mesh_reduce("total_test_loss", total_loss, np.sum)
+        total_samples = xm.mesh_reduce("total_test_samples", total_samples, np.sum)
+        correct1 = xm.mesh_reduce("total_test_correct1", correct1, np.sum)
+        correct5 = xm.mesh_reduce("total_test_correct5", correct5, np.sum)
+
+    average_loss = 1.0 * total_loss / total_samples
     accuracy1 = 100.0 * correct1 / total_samples
     accuracy5 = 100.0 * correct5 / total_samples
     print_fn(
         f"Epoch {epoch} evaluation: Average Test Loss: {average_loss:.4f}, "
         f"Top 1 Test Accuracy: {correct1}/{total_samples} ({accuracy1:.2f}%)"
     )
-
-    if device.type == "xla":
-        average_loss = xm.mesh_reduce("test_average_loss", average_loss, np.mean)
-        accuracy1 = xm.mesh_reduce("test_accuracy1", accuracy1, np.mean)
-        accuracy5 = xm.mesh_reduce("test_accuracy5", accuracy5, np.mean)
     return average_loss, accuracy1, accuracy5
 
 
