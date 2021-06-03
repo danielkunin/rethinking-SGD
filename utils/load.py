@@ -148,8 +148,7 @@ def dataloader(
         dataset = datasets.ImageFolder(folder, transform=transform)
 
     # Dataloader
-    shuffle = train is True
-    shuffle = shuffle and shuffle
+    shuffle = (train is True) and shuffle
     if length is not None:
         indices = torch.randperm(len(dataset))[:length]
         dataset = torch.utils.data.Subset(dataset, indices)
