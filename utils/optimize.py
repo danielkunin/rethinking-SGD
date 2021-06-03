@@ -1,4 +1,5 @@
 import torch
+import deepdish as dd
 import numpy as np
 from tqdm import tqdm
 
@@ -63,6 +64,7 @@ def train(
     save_path,
     log_interval=10,
     lean_ckpt=False,
+    test_loader=None,
     **kwargs,
 ):
     batch_size = kwargs.get("batch_size")  # per core batch size
@@ -86,7 +88,6 @@ def train(
     correct5 = 0
     for batch_idx, (data, target) in enumerate(dataloader):
         curr_step = epoch * num_batches + batch_idx
-
         ###### Batch loading
         if device.type != "xla":
             data, target = data.to(device), target.to(device)
@@ -135,12 +136,34 @@ def train(
         #       it might make more sense to checkpoint only on epoch: makes
         #       for a cleaner codebase and can include test metrics
         # TODO: additionally, could integrate tfutils.DBInterface here
+        # TODO: customize the metric dict based on flags
         ######## Checkpointing
         if save and save_path is not None and save_freq is not None:
-            if curr_step % save_freq == 0 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
+            # Do this for consecutive steps
+            if curr_step % save_freq <= 0 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
+                pos, vel = optimizer.track()
                 metric_dict = {
-                    "train_loss": train_loss.item(),
+                    "vel_norm": torch.norm(vel),
+                    "dist_from_start": torch.norm(pos - kwargs["theta_0"]),
                 }
+                if "eigenvectors" in kwargs.keys():
+                    metric_dict["projected_pos"] = torch.matmul(kwargs["eigenvectors"], pos),
+                    metric_dict["projected_vel"] = torch.matmul(kwargs["eigenvectors"], vel),
+                if kwargs["eval_mid_epoch"]:
+                    test_loss, test_accuracy1, test_accuracy5 = eval(
+                        model, loss, test_loader, device, verbose, epoch
+                    )
+                    model.train()
+                    eval_metrics = {
+                        "train_loss": train_loss.item(),
+                        "train_batch_accuracy1": correct[:, :1].sum().item(),
+                        "train_batch_accuracy5": correct[:, :5].sum().item(),
+                        "test_loss": test_loss,
+                        "test_accuracy1": test_accuracy1,
+                        "test_accuracy5": test_accuracy5,
+                    }
+                    metric_dict.update(eval_metrics)
+
                 checkpoint(
                     model,
                     optimizer,
@@ -232,6 +255,21 @@ def train_eval_loop(
         train_loader = pl.MpDeviceLoader(train_loader, device)
         test_loader = pl.MpDeviceLoader(test_loader, device)
 
+    # Get the weights at initialization
+    trainabe_weights = []
+    for name,param in model.named_parameters():
+        if param.requires_grad:
+            trainabe_weights.append(param.detach().clone())
+    theta_0 = torch.cat([p.reshape(-1) for p in trainabe_weights])
+    kwargs["theta_0"] = theta_0
+
+    # Also get the eigenvectors if a path is specified
+    if kwargs["spectral_path"]:
+        print_fn("Including eveces in kwargs")
+        evecs = dd.io.load(ARGS.spectral_path, "/eigenvector")
+        kwargs["eigenvectors"] = torch.tensor(evecs.T, device=device)
+
+    # Initial eval
     test_loss, test_accuracy1, test_accuracy5 = eval(model, loss, test_loader, device, verbose, 0)
     metric_dict = {
         "train_loss": 0,
@@ -266,6 +304,7 @@ def train_eval_loop(
             save_begin_epoch=save_begin_epoch,
             save_path=save_path,
             lean_ckpt=lean_ckpt,
+            test_loader=test_loader,
             **kwargs,
         )
         print_fn(
