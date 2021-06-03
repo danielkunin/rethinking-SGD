@@ -1,5 +1,4 @@
 import io
-import pandas as pd
 import glob
 import os
 from shutil import move
