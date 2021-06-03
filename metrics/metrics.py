@@ -8,6 +8,7 @@ import deepdish as dd
 
 from metrics.hessian import hessian_eigenprojection
 from metrics.hessian import fft
+from metrics.hessian import load_weight_and_grad
 
 def performance(model, feats_dir, steps, **kwargs):
     metrics = {}
@@ -54,6 +55,16 @@ def performance_from_ckpt(model, feats_dir, steps, **kwargs):
     metrics = {k:np.array(v) for k,v in metrics.items()}
     return {"performance": metrics}
 
+
+def weight_norm(model, feats_dir, steps, **kwargs):
+    norms = []
+    for i in tqdm(range(0, len(steps))):
+        step = steps[i]
+        weight, _ = load_weight_and_grad(step, feats_dir)
+        norms.append(np.linalg.norm(weight))
+    norms = np.array(norms)
+    return {"weight_norm": norms}
+
 def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
     ckpt_dir = feats_dir.replace("feats", "ckpt")
     step_names = glob.glob(
@@ -79,7 +90,8 @@ def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
 
     for k in metric_keys:
         if k is "vel_norm":
-            metrics[k] = metrics[k][::2]**2
+            #metrics[k] = metrics[k][::2]**2
+            metrics[k] = metrics[k]**2
         else:
             metrics[k] = (metrics[k][1::2] - metrics[k][::2])**2
     return {"loss_diff": metrics}
@@ -93,16 +105,23 @@ def dist_from_start_from_ckpt(model, feats_dir, steps, **kwargs):
     steps = sorted(
         [int(s.split(".tar")[0].split("step")[1]) for s in step_names]
     )
-    metric_keys = ["dist_from_start"]
+    metric_keys = [
+        "dist_from_start",
+        "projected_pos",
+        "projected_vel",
+    ]
     metrics = {m: [] for m in metric_keys}
     for i in tqdm(range(len(steps))):
         step = steps[i]
         ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
         if "dist_from_start" in ckpt.keys():
             for m in metric_keys:
+                if type(ckpt[m]) is list:
+                    ckpt[m] = ckpt[m][0]
+                if len(ckpt[m].shape) > 0:
+                    ckpt[m] = ckpt[m].cpu().numpy()
                 metrics[m].append(ckpt[m])
     metrics = {k:np.array(v) for k,v in metrics.items()}
-
     return {"dist_from_start": metrics}
 
 def load_weight_and_grad(step, feats_dir):
@@ -153,4 +172,5 @@ metric_fns = {
     "dist_from_start_from_ckpt": dist_from_start_from_ckpt,
     "hessian_eigenprojection": hessian_eigenprojection,
     "fft": fft,
+    "weight_norm": weight_norm,
 }
