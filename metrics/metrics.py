@@ -85,6 +85,8 @@ def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
         ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
         if "vel_norm" in ckpt.keys():
             for m in metric_keys:
+                if type(ckpt[m]) == torch.Tensor:
+                    ckpt[m] = ckpt[m].cpu().numpy()
                 metrics[m].append(ckpt[m])
     metrics = {k:np.array(v) for k,v in metrics.items()}
 
@@ -116,9 +118,9 @@ def dist_from_start_from_ckpt(model, feats_dir, steps, **kwargs):
         ckpt = torch.load(f"{ckpt_dir}/step{step}.tar")
         if "dist_from_start" in ckpt.keys():
             for m in metric_keys:
-                if type(ckpt[m]) is list:
+                if type(ckpt[m]) is list or type(ckpt[m]) is tuple:
                     ckpt[m] = ckpt[m][0]
-                if len(ckpt[m].shape) > 0:
+                if type(ckpt[m]) is torch.Tensor:
                     ckpt[m] = ckpt[m].cpu().numpy()
                 metrics[m].append(ckpt[m])
     metrics = {k:np.array(v) for k,v in metrics.items()}
