@@ -75,9 +75,10 @@ def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
     )
     metric_keys = [
         "vel_norm",
-        "test_loss",
-        "test_accuracy1",
-        "test_accuracy5",
+        "pos_norm",
+        #"test_loss",
+        #"test_accuracy1",
+        #"test_accuracy5",
     ]
     metrics = {m: [] for m in metric_keys}
     for i in tqdm(range(len(steps))):
@@ -91,7 +92,7 @@ def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
     metrics = {k:np.array(v) for k,v in metrics.items()}
 
     for k in metric_keys:
-        if k is "vel_norm":
+        if k is "vel_norm" or k is "pos_norm":
             #metrics[k] = metrics[k][::2]**2
             metrics[k] = metrics[k]**2
         else:
@@ -109,8 +110,8 @@ def dist_from_start_from_ckpt(model, feats_dir, steps, **kwargs):
     )
     metric_keys = [
         "dist_from_start",
-        "projected_pos",
-        "projected_vel",
+        #"projected_pos",
+        #"projected_vel",
     ]
     metrics = {m: [] for m in metric_keys}
     for i in tqdm(range(len(steps))):
