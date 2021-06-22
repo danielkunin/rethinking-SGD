@@ -143,6 +143,7 @@ def train(
             if curr_step % save_freq <= 0 and (epoch + batch_idx/num_batches) >= save_begin_epoch:
                 pos, vel = optimizer.track()
                 metric_dict = {
+                    "pos_norm": torch.norm(pos),
                     "vel_norm": torch.norm(vel),
                     "dist_from_start": torch.norm(pos - kwargs["theta_0"]),
                 }
