@@ -76,6 +76,7 @@ def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
     metric_keys = [
         "vel_norm",
         "pos_norm",
+        "pos_dot",
         #"test_loss",
         #"test_accuracy1",
         #"test_accuracy5",
@@ -95,6 +96,8 @@ def loss_diff_from_ckpt(model, feats_dir, steps, **kwargs):
         if k is "vel_norm" or k is "pos_norm":
             #metrics[k] = metrics[k][::2]**2
             metrics[k] = metrics[k]**2
+        elif k is "pos_dot":
+            metrics[k] = metrics[k]
         else:
             metrics[k] = (metrics[k][1::2] - metrics[k][::2])**2
     return {"loss_diff": metrics}
