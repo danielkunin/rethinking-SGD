@@ -145,6 +145,7 @@ def train(
                 metric_dict = {
                     "pos_norm": torch.norm(pos),
                     "vel_norm": torch.norm(vel),
+                    "pos_dot": torch.dot(pos, kwargs["theta_0"]),
                     "dist_from_start": torch.norm(pos - kwargs["theta_0"]),
                 }
                 if "eigenvectors" in kwargs.keys():
