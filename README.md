@@ -1,4 +1,4 @@
-# Neural Mechanics
+# Rethinking the Limiting Dynamics of SGD
 
 ## Getting Started
 :snake: Python 3.6+
@@ -10,18 +10,6 @@ pip install -r requirements.txt
 
 ### Style :computer:
 1. As much as possible, format code with [`black`](https://black.readthedocs.io/en/stable/)
-1. `pre_commit.sh` is provided to ensure that 1) code is formatted with `black` and 2) all unit tests pass. If you want to run this script as a pre-commit hook, i.e., commits will be blocked if formatting or tests fail, make a file with the following code snipped in `.git/hooks/pre-commit`:
-    ```
-    #!/bin/sh
-
-    echo "# Running pre-commit hook"
-    echo "#########################"
-    ./pre_commit.sh
-    if [ $? -ne 0 ]; then
-        echo "At least one test failed, aborting commit"
-        exit 1
-    fi
-    ```
 
 ## Training a model and tracking its dynamics
 Training a model is as easy as running `python train.py` with the appropriate flags.
@@ -78,20 +66,7 @@ It is particularly useful for recomputing a single cache or computing a cache fo
 ### Visualization
 
 Visualization of the metrics is intended to be done by the end user.
-However we provide:
-- The `plot.py` script with basic plotting functionality using the above generated caches.
-- The `notebooks/plots.ipynb` notebook which shows how the caches might be used to quickly iterate and fine-tune plots. This is the notebook used to generate the empirical plots in the original paper.
+However, we provide:
+- The `notebooks/figures.ipynb` notebook which shows how the caches might be used to quickly iterate and fine-tune plots. This is the notebook used to generate the empirical plots in the original paper.
+- The rest of the notebooks in the `notebooks` folder are rougher drafts containing setup and visualization of the rest of the experiments in the paper.
 
-## Citation
-If you use this code for your research, please use the following citation:
-
-```
-@inproceedings{
-    kunin2021neural,
-    title={Neural Mechanics: Symmetry and Broken Conservation Laws in Deep Learning Dynamics},
-    author={Daniel Kunin and Javier Sagastuy-Brena and Surya Ganguli and Daniel LK Yamins and Hidenori Tanaka},
-    booktitle={International Conference on Learning Representations},
-    year={2021},
-    url={https://openreview.net/forum?id=q8qLAbQBupm}
-}
-```
